@@ -3,7 +3,7 @@ import json
 
 consumer = KafkaConsumer(
     'test-topic',
-    bootstrap_servers='localhost:9092',
+    bootstrap_servers='192.168.178.93:9092',
     auto_offset_reset='earliest',
     enable_auto_commit=True,
     value_deserializer=lambda m: json.loads(m.decode('utf-8'))

@@ -9,11 +9,12 @@ producer = KafkaProducer(
 
 topic_name = 'test-topic'
 
-for i in range(100):
-    event = {'event_id': i, 'message': f'Event number {i}'}
-    producer.send(topic_name, value=event)
-    print(f'Sent: {event}')
-    time.sleep(1)
+for i in range(3600):
+    # print current time with seconds accuracy
+    current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    print(f'Producing message: {current_time}')
+    producer.send(topic_name, value=current_time)
+    time.sleep(1)  # Sleep for 1 second between messages
 
 producer.flush()
 producer.close()

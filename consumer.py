@@ -4,6 +4,7 @@ import json
 consumer = KafkaConsumer(
     'test-topic',
     bootstrap_servers='192.168.178.93:9092',
+    group_id='my-group',
     auto_offset_reset='earliest',
     enable_auto_commit=True,
     value_deserializer=lambda m: json.loads(m.decode('utf-8'))
@@ -11,4 +12,4 @@ consumer = KafkaConsumer(
 
 print('Waiting for messages...')
 for message in consumer:
-    print(f'Received message: {message.value}')
+    print(f'Received message: {message.value} from partition {message.partition} at offset {message.offset}')

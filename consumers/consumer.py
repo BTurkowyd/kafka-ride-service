@@ -5,7 +5,7 @@ import threading
 def run_consumer(consumer_id):
     consumer = KafkaConsumer(
         'test-topic-partitioned-2',
-        bootstrap_servers='localhost:9092',
+        bootstrap_servers='192.168.178.93:9092',
         auto_offset_reset='earliest',
         enable_auto_commit=True,
         group_id='test-group',

@@ -1,18 +1,23 @@
 import psycopg2
 from faker import Faker
+from faker_vehicle import VehicleProvider
+
 import random
 from datetime import datetime
 from dotenv import load_dotenv
 import os
 
+
 faker = Faker()
+faker.add_provider(VehicleProvider)
+
 load_dotenv()
 
 DB_CONFIG = {
     'dbname':os.getenv("POSTGRES_DB"),
     'user': os.getenv("POSTGRES_USER"),
     'password': os.getenv("POSTGRES_PASSWORD"),
-    'host': 'localhost',
+    'host': '192.168.178.93',
     'port': 5432
 }
 

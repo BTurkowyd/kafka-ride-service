@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  kafka:
+    environment:
+      KAFKA_CREATE_TOPICS: >
+        uber.ride_requested:1:1,
+        uber.ride_started:1:1,
+        uber.location_update:1:1,
+        uber.ride_completed:1:1

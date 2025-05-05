@@ -6,12 +6,12 @@ from kafka import KafkaConsumer
 from datetime import datetime
 from dotenv import load_dotenv
 import os
+import time
 
 # Load environment variables
 load_dotenv()
 psycopg2.extras.register_uuid()
 
-# Kafka and DB config
 KAFKA_TOPIC = "uber.location_update"
 BOOTSTRAP_SERVERS = "192.168.178.93:9092"
 
@@ -23,10 +23,15 @@ DB_CONFIG = {
     'port': 5432
 }
 
+BATCH_SIZE = 10
+FLUSH_INTERVAL = 5  # seconds
+
 def get_db_connection():
     return psycopg2.connect(**DB_CONFIG)
 
-# Kafka consumer
+buffer = []
+last_flush_time = time.time()
+
 consumer = KafkaConsumer(
     KAFKA_TOPIC,
     bootstrap_servers=BOOTSTRAP_SERVERS,
@@ -36,7 +41,30 @@ consumer = KafkaConsumer(
     enable_auto_commit=True
 )
 
-print("[INFO] location_update consumer is listening...")
+print("[INFO] location_update consumer (batched) is listening...")
+
+def flush_to_db(records):
+    if not records:
+        return
+
+    try:
+        conn = get_db_connection()
+        with conn:
+            with conn.cursor() as cur:
+                psycopg2.extras.execute_values(
+                    cur,
+                    """
+                    INSERT INTO ride_locations (ride_id, timestamp, lat, lon)
+                    VALUES %s;
+                    """,
+                    records
+                )
+        print(f"[INFO] Flushed {len(records)} location updates to DB.")
+    except Exception as e:
+        print(f"[ERROR] Failed to batch insert: {e}")
+    finally:
+        if 'conn' in locals():
+            conn.close()
 
 for message in consumer:
     data = message.value
@@ -44,18 +72,13 @@ for message in consumer:
         ride_id = uuid.UUID(data['ride_id'])
         timestamp = datetime.fromisoformat(data['timestamp'])
         lat, lon = data['location']
-
-        conn = get_db_connection()
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO ride_locations (ride_id, timestamp, lat, lon)
-                    VALUES (%s, %s, %s, %s);
-                """, (ride_id, timestamp, lat, lon))
-        print(f"[INSERTED] location_update for ride_id {ride_id} at {lat}, {lon}")
-
+        buffer.append((ride_id, timestamp, lat, lon))
     except Exception as e:
-        print(f"[ERROR] Failed to insert location_update: {e}")
-    finally:
-        if 'conn' in locals():
-            conn.close()
+        print(f"[WARN] Skipping invalid record: {e}")
+        continue
+
+    now = time.time()
+    if len(buffer) >= BATCH_SIZE or (now - last_flush_time) >= FLUSH_INTERVAL:
+        flush_to_db(buffer)
+        buffer.clear()
+        last_flush_time = now

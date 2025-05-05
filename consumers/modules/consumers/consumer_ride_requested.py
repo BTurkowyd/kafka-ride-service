@@ -1,12 +1,11 @@
 import json
 import uuid
 
-import psycopg2
 import psycopg2.extras
 from kafka import KafkaConsumer
 from datetime import datetime
 from dotenv import load_dotenv
-import os
+from ..helpers import get_db_connection
 
 load_dotenv()
 psycopg2.extras.register_uuid()
@@ -15,16 +14,6 @@ psycopg2.extras.register_uuid()
 KAFKA_TOPIC = "uber.ride_requested"
 BOOTSTRAP_SERVERS = "192.168.178.93:9092"
 
-DB_CONFIG = {
-    'dbname': os.getenv("POSTGRES_DB"),
-    'user': os.getenv("POSTGRES_USER"),
-    'password': os.getenv("POSTGRES_PASSWORD"),
-    'host': "192.168.178.93",
-    'port': 5432
-}
-
-def create_connection():
-    return psycopg2.connect(**DB_CONFIG)
 
 def insert_ride(event):
     ride_id = uuid.UUID(event["ride_id"])
@@ -33,7 +22,7 @@ def insert_ride(event):
     pickup_lat, pickup_lon = event["pickup"]
     dropoff_lat, dropoff_lon = event["dropoff"]
 
-    conn = create_connection()
+    conn = get_db_connection()
     try:
         with conn:
             with conn.cursor() as cur:
@@ -60,7 +49,7 @@ def insert_ride(event):
     finally:
         conn.close()
 
-def main():
+def consume_ride_requested():
     consumer = KafkaConsumer(
         KAFKA_TOPIC,
         bootstrap_servers=BOOTSTRAP_SERVERS,
@@ -77,4 +66,4 @@ def main():
         insert_ride(event)
 
 if __name__ == "__main__":
-    main()
+    consume_ride_requested()

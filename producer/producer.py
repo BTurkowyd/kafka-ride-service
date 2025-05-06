@@ -1,78 +1,120 @@
+import os
+import random
 import time
 import uuid
-import json
-import random
-from kafka import KafkaProducer
 from datetime import datetime, UTC
-from modules.postgres import load_ids
-from modules.geolocation import interpolate_route, haversine_distance, random_coord_within
 
-# Kafka setup
-producer = KafkaProducer(
-    bootstrap_servers='192.168.178.93:9092',
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+from confluent_kafka import SerializingProducer
+from confluent_kafka.serialization import StringSerializer
+from dotenv import load_dotenv
+from modules.geolocation import interpolate_route, haversine_distance, random_coord_within
+from modules.postgres import load_ids
+from modules.serializer import (
+    ride_requested_serializer,
+    ride_started_serializer,
+    location_update_serializer,
+    ride_completed_serializer
 )
 
-# Load once
+load_dotenv()
+
+# Config
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
+
+# Producer config (common)
+producer_config = {
+    "bootstrap.servers": KAFKA_BROKER,
+    "key.serializer": StringSerializer("utf_8"),
+}
+
+# Load known users
 drivers, passengers = load_ids()
 
 # Main loop
-for _ in range(5):  # or while True
+for _ in range(1):  # or while True
+    ride_id = str(uuid.uuid4())
     driver_id = random.choice(drivers)
     passenger_id = random.choice(passengers)
-    ride_id = str(uuid.uuid4())
 
     pickup = random_coord_within()
     dropoff = random_coord_within()
     route = interpolate_route(pickup, dropoff)
 
-    producer.send('uber.ride_requested', {
+    now = datetime.now(UTC).isoformat()
+
+    # 1. ride_requested
+    ride_requested_data = {
         "event_type": "ride_requested",
         "ride_id": ride_id,
-        "timestamp": datetime.now(UTC).isoformat(),
+        "timestamp": now,
         "pickup": pickup,
         "dropoff": dropoff,
         "passenger_id": passenger_id
+    }
+
+    producer = SerializingProducer({
+        **producer_config,
+        "value.serializer": ride_requested_serializer
     })
+    producer.produce(topic="uber.ride_requested", value=ride_requested_data)
+    producer.flush()
     print("[SENT] ride_requested")
 
     time.sleep(1)
 
-    producer.send('uber.ride_started', {
+    # 2. ride_started
+    ride_started_data = {
         "event_type": "ride_started",
         "ride_id": ride_id,
         "timestamp": datetime.now(UTC).isoformat(),
         "driver_id": driver_id,
         "location": pickup
+    }
+
+    producer = SerializingProducer({
+        **producer_config,
+        "value.serializer": ride_started_serializer
     })
+    producer.produce(topic="uber.ride_started", value=ride_started_data)
+    producer.flush()
     print("[SENT] ride_started")
 
+    # 3. location_update
     for loc in route:
-        producer.send('uber.location_update', {
+        location_data = {
             "event_type": "location_update",
             "ride_id": ride_id,
             "timestamp": datetime.now(UTC).isoformat(),
             "driver_id": driver_id,
             "location": loc
+        }
+        producer = SerializingProducer({
+            **producer_config,
+            "value.serializer": location_update_serializer
         })
+        producer.produce(topic="uber.location_update", value=location_data)
+        producer.flush()
         print(f"[SENT] location_update: {loc}")
         time.sleep(0.5)
 
-    distance_km = haversine_distance(pickup, dropoff)
-    fare = round(distance_km * 2.4, 2)  # simple multiplier
-
-    producer.send('uber.ride_completed', {
+    # 4. ride_completed
+    fare = round(haversine_distance(pickup, dropoff) * 2.4, 2)
+    completed_data = {
         "event_type": "ride_completed",
         "ride_id": ride_id,
         "timestamp": datetime.now(UTC).isoformat(),
         "driver_id": driver_id,
         "location": dropoff,
         "fare": fare
+    }
+
+    producer = SerializingProducer({
+        **producer_config,
+        "value.serializer": ride_completed_serializer
     })
+    producer.produce(topic="uber.ride_completed", value=completed_data)
+    producer.flush()
     print("[SENT] ride_completed")
 
     print("-" * 40)
     time.sleep(3)
-
-producer.flush()
-producer.close()

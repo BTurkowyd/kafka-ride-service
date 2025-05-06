@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "RideStarted",
+  "namespace": "uber.events",
+  "fields": [
+    { "name": "event_type", "type": "string" },
+    { "name": "ride_id", "type": "string" },
+    { "name": "timestamp", "type": "string" },
+    { "name": "driver_id", "type": "int" },
+    { "name": "location", "type": { "type": "array", "items": "double" } }
+  ]
+}

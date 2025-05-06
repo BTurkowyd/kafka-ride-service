@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "RideRequested",
+  "namespace": "uber.events",
+  "fields": [
+    { "name": "event_type", "type": "string" },
+    { "name": "ride_id", "type": "string" },
+    { "name": "timestamp", "type": "string" },
+    { "name": "pickup", "type": { "type": "array", "items": "double" } },
+    { "name": "dropoff", "type": { "type": "array", "items": "double" } },
+    { "name": "passenger_id", "type": "int" }
+  ]
+}

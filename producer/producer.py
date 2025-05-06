@@ -1,52 +1,25 @@
 import os
 import random
-import uuid
 import time
+import uuid
 from datetime import datetime, UTC
-from dotenv import load_dotenv
 
 from confluent_kafka import SerializingProducer
-from confluent_kafka.schema_registry import SchemaRegistryClient
-from confluent_kafka.schema_registry.avro import AvroSerializer
 from confluent_kafka.serialization import StringSerializer
-
-from modules.postgres import load_ids
+from dotenv import load_dotenv
 from modules.geolocation import interpolate_route, haversine_distance, random_coord_within
-import json
+from modules.postgres import load_ids
+from modules.serializer import (
+    ride_requested_serializer,
+    ride_started_serializer,
+    location_update_serializer,
+    ride_completed_serializer
+)
 
 load_dotenv()
 
 # Config
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
-SCHEMA_REGISTRY_URL = os.getenv("SCHEMA_REGISTRY_URL", "http://localhost:8081")
-
-# Schema Registry Client
-schema_registry_conf = {'url': SCHEMA_REGISTRY_URL}
-schema_registry_client = SchemaRegistryClient(schema_registry_conf)
-
-# Load Avro schemas from files
-def load_schema(path):
-    with open(path) as f:
-        return f.read()
-
-ride_requested_schema = load_schema("schemas/ride_requested.avsc")
-ride_started_schema = load_schema("schemas/ride_started.avsc")
-location_update_schema = load_schema("schemas/location_update.avsc")
-ride_completed_schema = load_schema("schemas/ride_completed.avsc")
-
-# Serializer setup per topic
-ride_requested_serializer = AvroSerializer(
-    schema_registry_client, ride_requested_schema, to_dict=lambda x, _: x
-)
-ride_started_serializer = AvroSerializer(
-    schema_registry_client, ride_started_schema, to_dict=lambda x, _: x
-)
-location_update_serializer = AvroSerializer(
-    schema_registry_client, location_update_schema, to_dict=lambda x, _: x
-)
-ride_completed_serializer = AvroSerializer(
-    schema_registry_client, ride_completed_schema, to_dict=lambda x, _: x
-)
 
 # Producer config (common)
 producer_config = {
@@ -58,7 +31,7 @@ producer_config = {
 drivers, passengers = load_ids()
 
 # Main loop
-for _ in range(5):  # or while True
+for _ in range(1):  # or while True
     ride_id = str(uuid.uuid4())
     driver_id = random.choice(drivers)
     passenger_id = random.choice(passengers)

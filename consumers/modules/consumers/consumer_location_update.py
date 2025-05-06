@@ -5,9 +5,12 @@ from datetime import datetime
 from dotenv import load_dotenv
 import psycopg2
 import psycopg2.extras
+
 from confluent_kafka import Consumer
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
+from confluent_kafka.serialization import SerializationContext, MessageField
+
 from ..helpers import get_db_connection, ride_exists
 
 # Load environment variables
@@ -26,8 +29,10 @@ RETRY_DELAY = 2  # seconds
 # Avro setup
 schema_registry_conf = {'url': SCHEMA_REGISTRY_URL}
 schema_registry_client = SchemaRegistryClient(schema_registry_conf)
-avro_deserializer = AvroDeserializer(schema_registry_client=schema_registry_client)
-
+avro_deserializer = AvroDeserializer(
+    schema_registry_client=schema_registry_client,
+    from_dict=lambda d, _: d
+)
 
 # Kafka Consumer config
 consumer_conf = {
@@ -96,11 +101,17 @@ def consume_location_updates():
             continue
 
         try:
-            event = avro_deserializer(msg.value(), None)
-            ride_id = uuid.UUID(event['ride_id'])
-            timestamp = datetime.fromisoformat(event['timestamp'])
-            lat, lon = event['location']
-            buffer.append((ride_id, timestamp, lat, lon))
+            event = avro_deserializer(
+                msg.value(),
+                SerializationContext(msg.topic(), MessageField.VALUE)
+            )
+            if event:
+                ride_id = uuid.UUID(event['ride_id'])
+                timestamp = datetime.fromisoformat(event['timestamp'])
+                lat, lon = event['location']
+                buffer.append((ride_id, timestamp, lat, lon))
+            else:
+                print(f"[WARN] Deserialization returned None on topic {msg.topic()}")
         except Exception as e:
             print(f"[WARN] Skipping invalid record: {e}")
             continue

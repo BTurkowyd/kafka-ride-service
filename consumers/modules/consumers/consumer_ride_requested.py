@@ -2,13 +2,12 @@ import uuid
 import os
 from datetime import datetime
 from dotenv import load_dotenv
-import psycopg2
 import psycopg2.extras
 
 from confluent_kafka import DeserializingConsumer
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
-from confluent_kafka.serialization import StringDeserializer, SerializationContext, MessageField
+from confluent_kafka.serialization import StringDeserializer
 
 from ..helpers import get_db_connection
 

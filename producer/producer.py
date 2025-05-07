@@ -31,7 +31,7 @@ producer_config = {
 drivers, passengers = load_ids()
 
 # Main loop
-for _ in range(1):  # or while True
+for _ in range(10):  # or while True
     ride_id = str(uuid.uuid4())
     driver_id = random.choice(drivers)
     passenger_id = random.choice(passengers)

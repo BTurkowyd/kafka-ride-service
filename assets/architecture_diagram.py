@@ -2,16 +2,13 @@ from diagrams import Diagram, Cluster, Edge
 from diagrams.onprem.queue import Kafka
 from diagrams.onprem.database import PostgreSQL
 from diagrams.generic.compute import Rack
-from diagrams.onprem.monitoring import Grafana
 from diagrams.programming.language import Python
-from diagrams.custom import Custom  # If you'd like to use icons later
+from diagrams.custom import Custom
 
 with Diagram("Kafka-based Event Pipeline", show=False, direction="LR"):
 
-    # Producer on the left
     producer = Python("producer.py")
 
-    # Kafka Cluster inside Docker Compose
     with Cluster("Docker Compose"):
         zookeeper = Rack("Zookeeper")
         kafka_ui = Custom("Kafka UI", "./kafka-ui.png")
@@ -26,14 +23,13 @@ with Diagram("Kafka-based Event Pipeline", show=False, direction="LR"):
                 topic3 = Kafka("ride_completed")
                 topic4 = Kafka("location_update")
 
-    # Consumers
-    with Cluster("Consumers"):
-        c1 = Python("ride_requested")
-        c2 = Python("ride_started")
-        c3 = Python("ride_completed")
-        c4 = Python("location_update")
+        with Cluster("Consumers"):
+            c1 = Python("ride_requested")
+            c2 = Python("ride_started")
+            c3 = Python("ride_completed")
+            c4 = Python("location_update")
 
-    db = PostgreSQL("PostgreSQL")
+        db = PostgreSQL("PostgreSQL")
 
     # Connections
     producer >> Edge(label="Avro Serialized") >> kafka_broker

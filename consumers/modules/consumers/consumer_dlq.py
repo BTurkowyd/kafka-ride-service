@@ -17,7 +17,7 @@ load_dotenv()
 psycopg2.extras.register_uuid()
 
 # Kafka & Registry config
-KAFKA_TOPIC = "uber.dlq"
+KAFKA_TOPIC = "uber.dead_letter"
 BOOTSTRAP_SERVERS = os.getenv("KAFKA_BROKER", "localhost:9092")
 SCHEMA_REGISTRY_URL = os.getenv("SCHEMA_REGISTRY_URL", "http://localhost:8081")
 

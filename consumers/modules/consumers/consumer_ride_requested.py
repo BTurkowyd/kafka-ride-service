@@ -1,14 +1,14 @@
-import uuid
 import os
+import uuid
 from datetime import datetime
-from dotenv import load_dotenv
-import psycopg2.extras
 
+import psycopg2.extras
 from confluent_kafka import DeserializingConsumer
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.serialization import StringDeserializer
-
+from dotenv import load_dotenv
+from ..dlq_producer import send_to_dlq
 from ..helpers import get_db_connection
 
 # Load env
@@ -24,14 +24,14 @@ SCHEMA_REGISTRY_URL = os.getenv("SCHEMA_REGISTRY_URL", "http://localhost:8081")
 schema_registry_conf = {'url': SCHEMA_REGISTRY_URL}
 schema_registry_client = SchemaRegistryClient(schema_registry_conf)
 
-# Avro deserializer with from_dict passthrough
+# Avro deserializer
 avro_deserializer = AvroDeserializer(
     schema_registry_client=schema_registry_client,
     schema_str=None,
     from_dict=lambda d, _: d
 )
 
-# Kafka consumer config with key + value deserializers
+# Kafka consumer config
 consumer_conf = {
     'bootstrap.servers': BOOTSTRAP_SERVERS,
     'key.deserializer': StringDeserializer('utf_8'),
@@ -70,8 +70,6 @@ def insert_ride(event):
                     'in_progress'
                 ))
                 print(f"[DB] Ride inserted for passenger {passenger_id}")
-    except Exception as e:
-        print(f"[ERROR] Failed to insert ride: {e}")
     finally:
         conn.close()
 
@@ -83,18 +81,30 @@ def consume_ride_requested():
 
     while True:
         msg = consumer.poll(1.0)
-        if msg is None:
-            continue
-        if msg.error():
-            print(f"[ERROR] Kafka error: {msg.error()}")
+        if msg is None or msg.error():
             continue
 
-        event = msg.value()
-        if event is not None:
+        try:
+            event = msg.value()
+
+            if event is None:
+                raise ValueError("Deserialization returned None (schema mismatch?)")
+
             print(f"[Kafka] Received: {event}")
             insert_ride(event)
-        else:
-            print("[WARN] Received null/invalid event.")
+
+        except Exception as e:
+            raw_bytes = msg.value()
+            original_event = raw_bytes if isinstance(raw_bytes, str) else str(raw_bytes)
+
+            send_to_dlq(
+                original_event=original_event,
+                error_msg=str(e),
+                topic=msg.topic(),
+                partition=msg.partition(),
+                offset=msg.offset(),
+            )
+            print(f"[DLQ] Sent failed event to DLQ: {e}")
 
 if __name__ == "__main__":
     consume_ride_requested()

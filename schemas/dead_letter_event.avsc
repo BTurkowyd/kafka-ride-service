@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "DeadLetterEvent",
+  "namespace": "uber.dlq",
+  "fields": [
+    { "name": "topic", "type": "string" },
+    { "name": "partition", "type": "int" },
+    { "name": "offset", "type": "long" },
+    { "name": "event_time", "type": "string" },
+    { "name": "original_event", "type": "string" },
+    { "name": "error_message", "type": "string" }
+  ]
+}

@@ -11,6 +11,7 @@ from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.serialization import SerializationContext, MessageField
 
 from ..helpers import get_db_connection, ride_exists
+from ..dlq_producer import send_to_dlq
 
 # Load environment variables
 load_dotenv()
@@ -72,9 +73,7 @@ def update_ride_completed(event):
                     print(f"[Retry] ride_id {ride_id} not found, retrying ({attempt + 1})...")
                     time.sleep(RETRY_DELAY)
                 else:
-                    print(f"[ERROR] ride_id {ride_id} not found after {MAX_RETRIES} retries.")
-        except Exception as e:
-            print(f"[ERROR] Failed to update ride_completed: {e}")
+                    raise ValueError(f"ride_id {ride_id} not found after {MAX_RETRIES} retries.")
         finally:
             conn.close()
 
@@ -95,13 +94,21 @@ def consume_ride_completed():
                 msg.value(),
                 SerializationContext(msg.topic(), MessageField.VALUE)
             )
-            if event:
-                print(f"[Kafka] Received: {event}")
-                update_ride_completed(event)
-            else:
-                print(f"[WARN] Deserialization returned None for topic {msg.topic()}")
+            if event is None:
+                raise ValueError("Deserialization returned None (schema mismatch?)")
+
+            print(f"[Kafka] Received: {event}")
+            update_ride_completed(event)
+
         except Exception as e:
-            print(f"[ERROR] Failed to deserialize or process: {e}")
+            print(f"[DLQ] Redirecting message due to error: {e}")
+            send_to_dlq(
+                topic=msg.topic(),
+                partition=msg.partition(),
+                offset=msg.offset(),
+                original_event=msg.value(),
+                error_msg=str(e)
+            )
 
 
 if __name__ == "__main__":

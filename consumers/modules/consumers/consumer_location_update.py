@@ -12,6 +12,7 @@ from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.serialization import SerializationContext, MessageField
 
 from ..helpers import get_db_connection, ride_exists
+from ..dlq_producer import send_to_dlq
 
 # Load environment variables
 load_dotenv()
@@ -34,7 +35,7 @@ avro_deserializer = AvroDeserializer(
     from_dict=lambda d, _: d
 )
 
-# Kafka Consumer config
+# Kafka consumer config
 consumer_conf = {
     'bootstrap.servers': BOOTSTRAP_SERVERS,
     'group.id': 'location_update_consumer_group',
@@ -111,9 +112,17 @@ def consume_location_updates():
                 lat, lon = event['location']
                 buffer.append((ride_id, timestamp, lat, lon))
             else:
-                print(f"[WARN] Deserialization returned None on topic {msg.topic()}")
+                raise ValueError("Deserialization returned None (schema mismatch?)")
+
         except Exception as e:
-            print(f"[WARN] Skipping invalid record: {e}")
+            print(f"[DLQ] Redirecting message to DLQ due to: {e}")
+            send_to_dlq(
+                topic=msg.topic(),
+                partition=msg.partition(),
+                offset=msg.offset(),
+                original_event=msg.value(),
+                error_msg=str(e)
+            )
             continue
 
         now = time.time()

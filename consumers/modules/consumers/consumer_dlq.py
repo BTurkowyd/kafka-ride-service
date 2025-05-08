@@ -59,7 +59,7 @@ def insert_dead_letter(event):
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO dead_letter_events (
-                        topic, partition, offset, event_time,
+                        topic, partition, "offset", event_time,
                         original_event, error_message
                     ) VALUES (%s, %s, %s, %s, %s, %s)
                 """, (

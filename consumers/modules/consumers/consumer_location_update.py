@@ -1,6 +1,8 @@
+import json
 import uuid
 import os
 import time
+import base64
 from datetime import datetime
 from dotenv import load_dotenv
 import psycopg2
@@ -11,7 +13,8 @@ from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.serialization import SerializationContext, MessageField
 
-from ..helpers import get_db_connection, ride_exists
+from ..helpers import get_db_connection, ride_exists, prepare_original_event
+from ..dlq_producer import send_to_dlq
 
 # Load environment variables
 load_dotenv()
@@ -34,7 +37,7 @@ avro_deserializer = AvroDeserializer(
     from_dict=lambda d, _: d
 )
 
-# Kafka Consumer config
+# Kafka consumer config
 consumer_conf = {
     'bootstrap.servers': BOOTSTRAP_SERVERS,
     'group.id': 'location_update_consumer_group',
@@ -111,9 +114,20 @@ def consume_location_updates():
                 lat, lon = event['location']
                 buffer.append((ride_id, timestamp, lat, lon))
             else:
-                print(f"[WARN] Deserialization returned None on topic {msg.topic()}")
+                raise ValueError("Deserialization returned None (schema mismatch?)")
+
         except Exception as e:
-            print(f"[WARN] Skipping invalid record: {e}")
+            print(f"[DLQ] Redirecting message to DLQ due to: {e}")
+
+            original_event = prepare_original_event(msg, locals().get("event"))
+
+            send_to_dlq(
+                topic=msg.topic(),
+                partition=msg.partition(),
+                offset=msg.offset(),
+                original_event=original_event,
+                error_msg=str(e)
+            )
             continue
 
         now = time.time()

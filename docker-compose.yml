@@ -62,7 +62,7 @@ services:
     build:
       context: .
       dockerfile: consumers/Dockerfile
-    command: [ "python", "-m", "modules.consumers.consumer_ride_requested" ]
+    command: [ "python", "-m", "consumers.modules.consumers.consumer_ride_requested" ]
     depends_on:
       - kafka
       - schema-registry
@@ -75,7 +75,7 @@ services:
     build:
       context: .
       dockerfile: consumers/Dockerfile
-    command: [ "python", "-m", "modules.consumers.consumer_ride_started" ]
+    command: [ "python", "-m", "consumers.modules.consumers.consumer_ride_started" ]
     depends_on:
       - kafka
       - schema-registry
@@ -88,7 +88,7 @@ services:
     build:
       context: .
       dockerfile: consumers/Dockerfile
-    command: [ "python", "-m", "modules.consumers.consumer_ride_completed" ]
+    command: [ "python", "-m", "consumers.modules.consumers.consumer_ride_completed" ]
     depends_on:
       - kafka
       - schema-registry
@@ -101,7 +101,20 @@ services:
     build:
       context: .
       dockerfile: consumers/Dockerfile
-    command: [ "python", "-m", "modules.consumers.consumer_location_update" ]
+    command: [ "python", "-m", "consumers.modules.consumers.consumer_location_update" ]
+    depends_on:
+      - kafka
+      - schema-registry
+      - postgres
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  consumer_dlq:
+    build:
+      context: .
+      dockerfile: consumers/Dockerfile
+    command: [ "python", "-m", "consumers.modules.consumers.consumer_dlq" ]
     depends_on:
       - kafka
       - schema-registry

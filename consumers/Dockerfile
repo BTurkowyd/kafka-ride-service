@@ -12,7 +12,7 @@ COPY consumers/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the whole consumers directory
-COPY consumers .
+COPY . .
 
 # Optional: set environment variables here or use Docker Compose
 # ENV POSTGRES_USER=kafka_user ...

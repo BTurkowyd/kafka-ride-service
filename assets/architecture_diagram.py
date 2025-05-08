@@ -18,16 +18,23 @@ with Diagram("Kafka-based Event Pipeline", show=False, direction="LR"):
             kafka_broker = Kafka("Kafka Broker")
 
             with Cluster("Topics"):
-                topic1 = Kafka("ride_requested")
-                topic2 = Kafka("ride_started")
-                topic3 = Kafka("ride_completed")
-                topic4 = Kafka("location_update")
+                with Cluster("Streaming Topics"):
+                    topic1 = Kafka("ride_requested")
+                    topic2 = Kafka("ride_started")
+                    topic3 = Kafka("ride_completed")
+                    topic4 = Kafka("location_update")
+                with Cluster("Dead Letter Queue"):
+                    topic5 = Kafka("dead_letter_queue")
 
         with Cluster("Consumers"):
-            c1 = Python("ride_requested")
-            c2 = Python("ride_started")
-            c3 = Python("ride_completed")
-            c4 = Python("location_update")
+            with Cluster("Streaming Consumers"):
+                c1 = Python("ride_requested")
+                c2 = Python("ride_started")
+                c3 = Python("ride_completed")
+                c4 = Python("location_update")
+
+            with Cluster("Dead Letter Queue Consumer"):
+                c5 = Python("dead_letter_queue")
 
         db = PostgreSQL("PostgreSQL")
 
@@ -43,3 +50,4 @@ with Diagram("Kafka-based Event Pipeline", show=False, direction="LR"):
     topic2 >> Edge(label="Avro Deserialized") >> c2 >> db
     topic3 >> Edge(label="Avro Deserialized") >> c3 >> db
     topic4 >> Edge(label="Avro Deserialized") >> c4 >> db
+    [c1, c2, c3, c4] >> Edge(label="Error") >> topic5 >> c5 >> db

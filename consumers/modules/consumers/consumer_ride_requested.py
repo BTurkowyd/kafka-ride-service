@@ -1,6 +1,7 @@
 import os
 import uuid
 from datetime import datetime
+import base64
 
 import psycopg2.extras
 from confluent_kafka import DeserializingConsumer
@@ -9,7 +10,7 @@ from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.serialization import StringDeserializer
 from dotenv import load_dotenv
 from ..dlq_producer import send_to_dlq
-from ..helpers import get_db_connection
+from ..helpers import get_db_connection, prepare_original_event
 
 # Load env
 load_dotenv()
@@ -70,6 +71,8 @@ def insert_ride(event):
                     'in_progress'
                 ))
                 print(f"[DB] Ride inserted for passenger {passenger_id}")
+    except Exception as e:
+        raise e
     finally:
         conn.close()
 
@@ -94,8 +97,9 @@ def consume_ride_requested():
             insert_ride(event)
 
         except Exception as e:
-            raw_bytes = msg.value()
-            original_event = raw_bytes if isinstance(raw_bytes, str) else str(raw_bytes)
+            print(f"[DLQ] Redirecting message due to error: {e}")
+
+            original_event = prepare_original_event(msg, locals().get("event"))
 
             send_to_dlq(
                 original_event=original_event,

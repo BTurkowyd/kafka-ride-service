@@ -2,6 +2,7 @@ import json
 import uuid
 import os
 import time
+import base64
 from datetime import datetime
 from dotenv import load_dotenv
 import psycopg2.extras
@@ -11,7 +12,7 @@ from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.serialization import SerializationContext, MessageField
 
-from ..helpers import get_db_connection, ride_exists
+from ..helpers import get_db_connection, ride_exists, prepare_original_event
 from ..dlq_producer import send_to_dlq
 
 # Load environment variables
@@ -75,6 +76,8 @@ def update_ride_completed(event):
                     time.sleep(RETRY_DELAY)
                 else:
                     raise ValueError(f"ride_id {ride_id} not found after {MAX_RETRIES} retries.")
+        except Exception as e:
+            raise e
         finally:
             conn.close()
 
@@ -103,11 +106,14 @@ def consume_ride_completed():
 
         except Exception as e:
             print(f"[DLQ] Redirecting message due to error: {e}")
+
+            original_event = prepare_original_event(msg, locals().get("event"))
+
             send_to_dlq(
                 topic=msg.topic(),
                 partition=msg.partition(),
                 offset=msg.offset(),
-                original_event=json.dumps(msg.value()) if msg.value() is not None else "",
+                original_event=original_event,
                 error_msg=str(e)
             )
 

@@ -2,6 +2,7 @@ import json
 import uuid
 import os
 import time
+import base64
 from datetime import datetime
 from dotenv import load_dotenv
 import psycopg2
@@ -12,7 +13,7 @@ from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.serialization import SerializationContext, MessageField
 
-from ..helpers import get_db_connection, ride_exists
+from ..helpers import get_db_connection, ride_exists, prepare_original_event
 from ..dlq_producer import send_to_dlq
 
 # Load environment variables
@@ -117,11 +118,14 @@ def consume_location_updates():
 
         except Exception as e:
             print(f"[DLQ] Redirecting message to DLQ due to: {e}")
+
+            original_event = prepare_original_event(msg, locals().get("event"))
+
             send_to_dlq(
                 topic=msg.topic(),
                 partition=msg.partition(),
                 offset=msg.offset(),
-                original_event=json.dumps(msg.value()) if msg.value() is not None else "",
+                original_event=original_event,
                 error_msg=str(e)
             )
             continue

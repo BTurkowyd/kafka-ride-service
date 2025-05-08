@@ -41,3 +41,14 @@ CREATE TABLE IF NOT EXISTS ride_locations (
     lat DOUBLE PRECISION,
     lon DOUBLE PRECISION
 );
+
+
+CREATE TABLE IF NOT EXISTS dead_letter_events (
+    id SERIAL PRIMARY KEY,
+    topic VARCHAR(255) NOT NULL,
+    partition INT,
+    offset BIGINT,
+    event_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    original_event JSONB NOT NULL,
+    error_message TEXT NOT NULL
+);

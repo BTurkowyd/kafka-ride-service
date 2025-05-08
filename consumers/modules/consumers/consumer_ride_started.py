@@ -1,3 +1,4 @@
+import json
 import uuid
 import os
 import time
@@ -105,7 +106,7 @@ def consume_ride_started():
                 topic=msg.topic(),
                 partition=msg.partition(),
                 offset=msg.offset(),
-                original_event=msg.value(),
+                original_event=json.dumps(msg.value()) if msg.value() is not None else "",
                 error_msg=str(e)
             )
 

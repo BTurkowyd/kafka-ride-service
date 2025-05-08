@@ -110,6 +110,19 @@ services:
       - .env
     restart: unless-stopped
 
+  consumer_dlq:
+    build:
+      context: .
+      dockerfile: consumers/Dockerfile
+    command: [ "python", "-m", "modules.consumers.consumer_dlq" ]
+    depends_on:
+      - kafka
+      - schema-registry
+      - postgres
+    env_file:
+      - .env
+    restart: unless-stopped
+
 
 volumes:
   pgdata:

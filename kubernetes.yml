@@ -1,0 +1,272 @@
+# This is a high-level breakdown of what you need for Kubernetes setup
+# based on your docker-compose file. This does not include Helm charts directly,
+# but notes where to use them. Kubernetes manifests are provided for services not
+# managed by Helm.
+---
+# PostgreSQL StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: uber-service
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+  serviceName: "postgres"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:17.4
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_DB
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 1Gi
+
+---
+# PostgreSQL Headless Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+  namespace: uber-service
+spec:
+  clusterIP: None
+  ports:
+    - port: 5432
+  selector:
+    app: postgres
+
+---
+# PostgreSQL NodePort Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: uber-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+---
+# Kafka UI Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-ui
+  namespace: uber-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-ui
+  template:
+    metadata:
+      labels:
+        app: kafka-ui
+    spec:
+      containers:
+        - name: kafka-ui
+          image: provectuslabs/kafka-ui:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: KAFKA_CLUSTERS_0_NAME
+              value: local-kafka
+            - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
+              value: kafka:9092
+            - name: KAFKA_CLUSTERS_0_SCHEMAREGISTRY
+              value: http://schema-registry:8081
+
+---
+# Kafka UI Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-ui
+  namespace: uber-service
+spec:
+  selector:
+    app: kafka-ui
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: NodePort
+
+# NOTE:
+# - Use Helm to install Kafka, Zookeeper, and Schema Registry.
+#   e.g. via Bitnami: helm repo add bitnami https://charts.bitnami.com/bitnami
+#   helm install kafka bitnami/kafka --set zookeeper.enabled=true
+#
+# - Then deploy each consumer as a Kubernetes Deployment (see below)
+
+---
+# Template for one Kafka consumer
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-ride-requested
+  namespace: uber-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumer-ride-requested
+  template:
+    metadata:
+      labels:
+        app: consumer-ride-requested
+    spec:
+      containers:
+        - name: consumer-ride-requested
+          image: uber-consumer:latest
+          imagePullPolicy: Never
+          command: ["python", "-m", "consumers.modules.consumers.consumer_ride_requested"]
+          envFrom:
+            - configMapRef:
+                name: common-env
+            - secretRef:
+                name: postgres-secret
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-ride-started
+  namespace: uber-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumer-ride-started
+  template:
+    metadata:
+      labels:
+        app: consumer-ride-started
+    spec:
+      containers:
+        - name: consumer-ride-started
+          image: uber-consumer:latest
+          imagePullPolicy: Never
+          command: ["python", "-m", "consumers.modules.consumers.consumer_ride_started"]
+          envFrom:
+            - configMapRef:
+                name: common-env
+            - secretRef:
+                name: postgres-secret
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-ride-completed
+  namespace: uber-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumer-ride-completed
+  template:
+    metadata:
+      labels:
+        app: consumer-ride-completed
+    spec:
+      containers:
+        - name: consumer-ride-completed
+          image: uber-consumer:latest
+          imagePullPolicy: Never
+          command: [ "python", "-m", "consumers.modules.consumers.consumer_ride_completed" ]
+          envFrom:
+            - configMapRef:
+                name: common-env
+            - secretRef:
+                name: postgres-secret
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-location-update
+  namespace: uber-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumer-location-update
+  template:
+    metadata:
+      labels:
+        app: consumer-location-update
+    spec:
+      containers:
+        - name: consumer-location-update
+          image: uber-consumer:latest
+          imagePullPolicy: Never
+          command: ["python", "-m", "consumers.modules.consumers.consumer_location_update"]
+          envFrom:
+            - configMapRef:
+                name: common-env
+            - secretRef:
+                name: postgres-secret
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-dlq
+  namespace: uber-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumer-dlq
+  template:
+    metadata:
+      labels:
+        app: consumer-dlq
+    spec:
+      containers:
+        - name: consumer-dlq
+          image: uber-consumer:latest
+          imagePullPolicy: Never
+          command: ["python", "-m", "consumers.modules.consumers.consumer_dlq"]
+          envFrom:
+            - configMapRef:
+                name: common-env
+            - secretRef:
+                name: postgres-secret

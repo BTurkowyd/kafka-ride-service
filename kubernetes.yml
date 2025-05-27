@@ -131,7 +131,7 @@ spec:
 # NOTE:
 # - Use Helm to install Kafka, Zookeeper, and Schema Registry.
 #   e.g. via Bitnami: helm repo add bitnami https://charts.bitnami.com/bitnami
-#   helm install kafka bitnami/kafka --set zookeeper.enabled=true
+#   helm install kafka bitnami/kafka --set zookeeper.enabled=true --namespace uber-service
 #
 # - Then deploy each consumer as a Kubernetes Deployment (see below)
 

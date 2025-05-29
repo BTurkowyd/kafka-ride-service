@@ -108,7 +108,7 @@ spec:
             - name: KAFKA_CLUSTERS_0_NAME
               value: local-kafka
             - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
-              value: kafka:9092
+              value: kafka-headless.uber-service.svc.cluster.local:9092
             - name: KAFKA_CLUSTERS_0_SCHEMAREGISTRY
               value: http://schema-registry:8081
 
@@ -126,14 +126,7 @@ spec:
     - protocol: TCP
       port: 8080
       targetPort: 8080
-  type: NodePort
-
-# NOTE:
-# - Use Helm to install Kafka, Zookeeper, and Schema Registry.
-#   e.g. via Bitnami: helm repo add bitnami https://charts.bitnami.com/bitnami
-#   helm install kafka bitnami/kafka --set zookeeper.enabled=true --namespace uber-service
-#
-# - Then deploy each consumer as a Kubernetes Deployment (see below)
+  type: LoadBalancer
 
 ---
 # Template for one Kafka consumer

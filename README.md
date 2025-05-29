@@ -82,3 +82,58 @@ psql -h <Windows-IP> -p 5432 -U <user> -d <db>
 This setup avoids using Ingress or cloud load balancers — all local, all manual, and works beautifully.
 
 A similar approach can be used for other services like Kafka, Redis, etc.
+
+## 🔌 Accessing Kafka UI from LAN
+
+When running Minikube inside Docker via WSL2, `LoadBalancer` services (like Kafka UI) are not directly reachable from other machines on the network.
+
+To expose Kafka UI externally, apply this manual bridge:
+
+### ✅ Kafka UI External Access
+
+1. **Start the Minikube tunnel inside WSL2:**
+
+   ```bash
+   sudo minikube tunnel
+   ```
+
+2. **Forward WSL2 port to Minikube service via `socat`:**
+
+   Find the Kafka UI LoadBalancer IP:
+
+   ```bash
+   kubectl get svc kafka-ui -n uber-service
+   ```
+
+   Then forward:
+
+   ```bash
+   socat TCP-LISTEN:18080,fork,reuseaddr TCP:<EXTERNAL-IP>:8080
+   ```
+
+3. **Forward Windows port to WSL2 using `netsh` (PowerShell):**
+
+   ```powershell
+   netsh interface portproxy add v4tov4 `
+     listenport=18080 listenaddress=0.0.0.0 `
+     connectport=18080 connectaddress=<WSL2-IP>
+   ```
+
+   Find WSL2 IP via `wsl hostname -I`.
+
+4. **(Optional) Allow through Windows Firewall:**
+
+   ```powershell
+   netsh advfirewall firewall add rule name="Kafka UI K8s" `
+     dir=in action=allow protocol=TCP localport=18080
+   ```
+
+### 🧪 Result
+
+You can now access Kafka UI from any device on your local network via:
+
+```
+http://<Windows-IP>:18080
+```
+
+---

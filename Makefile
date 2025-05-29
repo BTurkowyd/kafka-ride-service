@@ -16,8 +16,8 @@ add-postgres-secrets:
 	  -n uber-service
 
 create-resources:
-	 kubectl apply -f kubernetes.yml && \
-	 helm install kafka bitnami/kafka --set kafka.zookeeper.enabled=true --namespace uber-service --set kafka.broker.replicaCount=1 --set kafka.controller.replicaCount=0 --set kafka.kraft.enabled=false
+	kubectl apply -f kubernetes.yml && \
+	helm install kafka bitnami/kafka -n uber-service -f kafka-values.yaml
 
 pg-socat:
 	socat TCP-LISTEN:15432,fork,reuseaddr TCP:127.0.0.1:5432

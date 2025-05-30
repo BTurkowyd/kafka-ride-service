@@ -82,6 +82,8 @@ spec:
     - port: 5432
       targetPort: 5432
 
+
+
 ---
 # Kafka UI Deployment
 apiVersion: apps/v1

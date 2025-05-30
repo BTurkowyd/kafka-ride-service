@@ -25,6 +25,7 @@ KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
 producer_config = {
     "bootstrap.servers": KAFKA_BROKER,
     "key.serializer": StringSerializer("utf_8"),
+    "debug": "all"
 }
 
 # Load known users

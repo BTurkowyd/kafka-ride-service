@@ -19,8 +19,19 @@ create-resources:
 	kubectl apply -f kubernetes.yml && \
 	kubectl apply -f kafka-zk.yaml
 
-pg-socat:
-	socat TCP-LISTEN:15432,fork,reuseaddr TCP:127.0.0.1:5432
+socat-ports:
+	# Kafka
+	socat TCP-LISTEN:19094,fork,reuseaddr TCP:127.0.0.1:9094 &
+
+	# Schema Registry
+	socat TCP-LISTEN:18081,fork,reuseaddr TCP:127.0.0.1:8081 &
+
+	# Postgres
+	socat TCP-LISTEN:15432,fork,reuseaddr TCP:127.0.0.1:5432 &
+
+	# Kafka UI
+	socat TCP-LISTEN:18080,fork,reuseaddr TCP:127.0.0.1:8080 &
+
 
 minikube-tunnel:
 	minikube tunnel

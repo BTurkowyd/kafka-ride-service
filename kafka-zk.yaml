@@ -89,7 +89,7 @@ spec:
   ports:
     - port: 9094
       targetPort: 9092
-  loadBalancerIP: 192.168.178.93
+
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -115,12 +115,10 @@ spec:
           ports:
             - containerPort: 9092
           env:
-            - name: KAFKA_BROKER_ID
-              value: "0"
             - name: KAFKA_CFG_LISTENERS
               value: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094
             - name: KAFKA_CFG_ADVERTISED_LISTENERS
-              value: INTERNAL://kafka.uber-service.svc.cluster.local:9092,EXTERNAL://192.168.178.93:9094
+              value: INTERNAL://kafka.uber-service.svc.cluster.local:9092,EXTERNAL://127.0.0.1:9094
             - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
               value: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
             - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
@@ -129,6 +127,7 @@ spec:
               value: zookeeper-headless.uber-service.svc.cluster.local:2181
             - name: ALLOW_PLAINTEXT_LISTENER
               value: "yes"
+
           volumeMounts:
             - name: kafka-data
               mountPath: /bitnami/kafka
@@ -148,7 +147,7 @@ metadata:
   name: schema-registry
   namespace: uber-service
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: schema-registry
@@ -163,15 +162,14 @@ spec:
           ports:
             - containerPort: 8081
           env:
-            - name: SCHEMA_REGISTRY_CFG_KAFKASTORE_BOOTSTRAP_SERVERS
+            - name: SCHEMA_REGISTRY_KAFKA_BROKERS
               value: PLAINTEXT://kafka.uber-service.svc.cluster.local:9092
-            - name: SCHEMA_REGISTRY_CFG_LISTENERS
-              value: http://0.0.0.0:8081
-            - name: SCHEMA_REGISTRY_CFG_HOST_NAME
+            - name: SCHEMA_REGISTRY_HOST_NAME
               value: schema-registry
-            - name: SCHEMA_REGISTRY_CFG_DEBUG
+            - name: SCHEMA_REGISTRY_LISTENERS
+              value: http://0.0.0.0:8081
+            - name: SCHEMA_REGISTRY_DEBUG
               value: "true"
-
 ---
 apiVersion: v1
 kind: Service
@@ -179,11 +177,10 @@ metadata:
   name: schema-registry
   namespace: uber-service
 spec:
+  type: LoadBalancer
   selector:
     app: schema-registry
   ports:
-    - protocol: TCP
-      port: 8081
+    - port: 8081
       targetPort: 8081
-  type: LoadBalancer
-  loadBalancerIP: 192.168.178.93  # or omit this to use dynamic IP
+      protocol: TCP

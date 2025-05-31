@@ -4,7 +4,7 @@ build-images:
 	docker build -t uber-producer:latest -f producer/Dockerfile .
 
 create-namespace:
-	 kubectl apply -f namespace.yml
+	 kubectl apply -f k8s-manifests/namespace.yml
 
 add-common-env-config-map:
 	kubectl create configmap common-env \
@@ -17,8 +17,10 @@ add-postgres-secrets:
 	  -n uber-service
 
 create-resources:
-	kubectl apply -f kubernetes.yml && \
-	kubectl apply -f kafka-zk.yaml
+	kubectl apply -f k8s-manifests/k8s-postgres && \
+	kubectl apply -f k8s-manifests/k8s-kafka-zookeeper.yaml && \
+	kubectl apply -f k8s-manifests/k8s-consumers.yaml && \
+	kubectl apply -f k8s-manifests/k8s-producer.yaml && \
 
 socat-ports:
 	# Kafka
@@ -39,7 +41,8 @@ minikube-tunnel:
 
 deploy-all:
 	make create-namespace
-	make build-consumer-image
+	make build-images
 	make add-common-env-config-map
 	make add-postgres-secrets
 	make create-resources
+	make socat-ports

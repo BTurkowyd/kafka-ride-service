@@ -1,6 +1,7 @@
-build-consumer-image:
+build-images:
 	@eval $$(minikube docker-env) && \
-	docker build -t uber-consumer:latest -f consumers/Dockerfile .
+	docker build -t uber-consumer:latest -f consumers/Dockerfile . && \
+	docker build -t uber-producer:latest -f producer/Dockerfile .
 
 create-namespace:
 	 kubectl apply -f namespace.yml

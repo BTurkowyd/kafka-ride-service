@@ -17,10 +17,10 @@ add-postgres-secrets:
 	  -n uber-service
 
 create-resources:
-	kubectl apply -f k8s-manifests/k8s-postgres && \
+	kubectl apply -f k8s-manifests/k8s-postgres.yaml && \
 	kubectl apply -f k8s-manifests/k8s-kafka-zookeeper.yaml && \
 	kubectl apply -f k8s-manifests/k8s-consumers.yaml && \
-	kubectl apply -f k8s-manifests/k8s-producer.yaml && \
+	kubectl apply -f k8s-manifests/k8s-producer.yaml
 
 socat-ports:
 	# Kafka
@@ -35,6 +35,8 @@ socat-ports:
 	# Kafka UI
 	socat TCP-LISTEN:18080,fork,reuseaddr TCP:127.0.0.1:8080 &
 
+	# Producer
+	socat TCP-LISTEN:18000,fork,reuseaddr TCP:127.0.0.1:8000 &
 
 minikube-tunnel:
 	minikube tunnel

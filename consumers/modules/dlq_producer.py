@@ -18,7 +18,7 @@ DLQ_TOPIC = "uber.dead_letter"
 schema_registry_conf = {'url': SCHEMA_REGISTRY_URL}
 schema_registry_client = SchemaRegistryClient(schema_registry_conf)
 
-with open("schemas/dead_letter_event.avsc", "r") as f:
+with open("producer/avro_schemas/dead_letter_event.avsc", "r") as f:
     schema_str = f.read()
 
 avro_serializer = AvroSerializer(

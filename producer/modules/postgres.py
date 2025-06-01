@@ -9,7 +9,7 @@ DB_CONFIG = {
     'dbname': os.getenv("POSTGRES_DB"),
     'user': os.getenv("POSTGRES_USER"),
     'password': os.getenv("POSTGRES_PASSWORD"),
-    'host': '192.168.178.93',
+    'host': os.getenv("POSTGRES_HOST", "127.0.0.1"),
     'port': 5432,
 }
 

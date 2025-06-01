@@ -1,0 +1,211 @@
+---
+# Template for one Kafka consumer
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-ride-requested
+  namespace: uber-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumer-ride-requested
+  template:
+    metadata:
+      labels:
+        app: consumer-ride-requested
+    spec:
+      containers:
+        - name: consumer-ride-requested
+          image: uber-consumer:latest
+          imagePullPolicy: Never
+          command: ["python", "-m", "consumers.modules.consumers.consumer_ride_requested"]
+          envFrom:
+            - configMapRef:
+                name: common-env
+            - secretRef:
+                name: postgres-secret
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-ride-started
+  namespace: uber-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumer-ride-started
+  template:
+    metadata:
+      labels:
+        app: consumer-ride-started
+    spec:
+      containers:
+        - name: consumer-ride-started
+          image: uber-consumer:latest
+          imagePullPolicy: Never
+          command: ["python", "-m", "consumers.modules.consumers.consumer_ride_started"]
+          env:
+            - name: KAFKA_BROKER
+              value: kafka.uber-service.svc.cluster.local:9092
+            - name: SCHEMA_REGISTRY_URL
+              value: http://schema-registry.uber-service.svc.cluster.local:8081
+            - name: POSTGRES_HOST
+              value: postgres.uber-service.svc.cluster.local
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-ride-completed
+  namespace: uber-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumer-ride-completed
+  template:
+    metadata:
+      labels:
+        app: consumer-ride-completed
+    spec:
+      containers:
+        - name: consumer-ride-completed
+          image: uber-consumer:latest
+          imagePullPolicy: Never
+          command: [ "python", "-m", "consumers.modules.consumers.consumer_ride_completed" ]
+          env:
+            - name: KAFKA_BROKER
+              value: kafka.uber-service.svc.cluster.local:9092
+            - name: SCHEMA_REGISTRY_URL
+              value: http://schema-registry.uber-service.svc.cluster.local:8081
+            - name: POSTGRES_HOST
+              value: postgres.uber-service.svc.cluster.local
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-location-update
+  namespace: uber-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumer-location-update
+  template:
+    metadata:
+      labels:
+        app: consumer-location-update
+    spec:
+      containers:
+        - name: consumer-location-update
+          image: uber-consumer:latest
+          imagePullPolicy: Never
+          command: ["python", "-m", "consumers.modules.consumers.consumer_location_update"]
+          env:
+            - name: KAFKA_BROKER
+              value: kafka.uber-service.svc.cluster.local:9092
+            - name: SCHEMA_REGISTRY_URL
+              value: http://schema-registry.uber-service.svc.cluster.local:8081
+            - name: POSTGRES_HOST
+              value: postgres.uber-service.svc.cluster.local
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-dlq
+  namespace: uber-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consumer-dlq
+  template:
+    metadata:
+      labels:
+        app: consumer-dlq
+    spec:
+      containers:
+        - name: consumer-dlq
+          image: uber-consumer:latest
+          imagePullPolicy: Never
+          command: ["python", "-m", "consumers.modules.consumers.consumer_dlq"]
+          env:
+            - name: KAFKA_BROKER
+              value: kafka.uber-service.svc.cluster.local:9092
+            - name: SCHEMA_REGISTRY_URL
+              value: http://schema-registry.uber-service.svc.cluster.local:8081
+            - name: POSTGRES_HOST
+              value: postgres.uber-service.svc.cluster.local
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB

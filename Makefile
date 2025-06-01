@@ -41,15 +41,3 @@ socat-ports:
 socat-kill:
 	@echo "Killing all socat processes..."
 	@pkill -f "socat TCP-LISTEN"
-
-
-minikube-tunnel:
-	minikube tunnel
-
-deploy-all:
-	make create-namespace
-	make build-images
-	make add-common-env-config-map
-	make add-postgres-secrets
-	make create-resources
-	make socat-ports

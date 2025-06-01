@@ -9,13 +9,13 @@ from dotenv import load_dotenv
 from confluent_kafka import SerializingProducer
 from confluent_kafka.serialization import StringSerializer
 
-from serializer import (
+from .serializer import (
     ride_requested_serializer,
     ride_started_serializer,
     location_update_serializer,
     ride_completed_serializer,
 )
-from geolocation import haversine_distance
+from .geolocation import haversine_distance
 
 
 # Pydantic request schema

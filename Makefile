@@ -36,7 +36,12 @@ socat-ports:
 	socat TCP-LISTEN:18080,fork,reuseaddr TCP:127.0.0.1:8080 &
 
 	# Producer
-	socat TCP-LISTEN:18000,fork,reuseaddr TCP:127.0.0.1:8000 &
+	socat TCP-LISTEN:18888,fork,reuseaddr TCP:127.0.0.1:8888 &
+
+socat-kill:
+	@echo "Killing all socat processes..."
+	@pkill -f "socat TCP-LISTEN"
+
 
 minikube-tunnel:
 	minikube tunnel

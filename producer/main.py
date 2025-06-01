@@ -9,14 +9,14 @@ from dotenv import load_dotenv
 from confluent_kafka import SerializingProducer
 from confluent_kafka.serialization import StringSerializer
 
-from modules.serializer import (
+from producer.modules.serializer import (
     ride_requested_serializer,
     ride_started_serializer,
     location_update_serializer,
     ride_completed_serializer,
 )
-from modules.geolocation import haversine_distance
-from modules.base_models import (
+from producer.modules.geolocation import haversine_distance
+from producer.modules.base_models import (
     RideRequestPayload,
     RideStartedPayload,
     RideCompletedPayload,

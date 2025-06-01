@@ -4,34 +4,24 @@ import time
 import uuid
 from datetime import datetime, UTC
 
-from confluent_kafka import SerializingProducer
-from confluent_kafka.serialization import StringSerializer
+import requests
 from dotenv import load_dotenv
-from modules.geolocation import interpolate_route, haversine_distance, random_coord_within
-from modules.postgres import load_ids
-from modules.serializer import (
-    ride_requested_serializer,
-    ride_started_serializer,
-    location_update_serializer,
-    ride_completed_serializer
+from modules.geolocation import (
+    interpolate_route,
+    random_coord_within,
 )
+from modules.postgres import load_ids
 
 load_dotenv()
 
-# Config
-KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
-
-# Producer config (common)
-producer_config = {
-    "bootstrap.servers": KAFKA_BROKER,
-    "key.serializer": StringSerializer("utf_8")
-}
+# Base URL of the FastAPI Kafka producer
+PRODUCER_URL = os.getenv("PRODUCER_URL", "http://localhost:8888")
 
 # Load known users
 drivers, passengers = load_ids()
 
-# Main loop
-for _ in range(10):  # or while True
+# Main simulation loop
+for _ in range(10):
     ride_id = str(uuid.uuid4())
     driver_id = random.choice(drivers)
     passenger_id = random.choice(passengers)
@@ -42,79 +32,40 @@ for _ in range(10):  # or while True
 
     now = datetime.now(UTC).isoformat()
 
-    # 1. ride_requested
+    # 1. Send ride_requested
     ride_requested_data = {
-        "event_type": "ride_requested",
         "ride_id": ride_id,
-        "timestamp": now,
         "pickup": pickup,
         "dropoff": dropoff,
-        "passenger_id": passenger_id
+        "passenger_id": passenger_id,
     }
-
-    producer = SerializingProducer({
-        **producer_config,
-        "value.serializer": ride_requested_serializer
-    })
-    producer.produce(topic="uber.ride_requested", value=ride_requested_data)
-    producer.flush()
-    print("[SENT] ride_requested")
+    response = requests.post(f"{PRODUCER_URL}/ride-request", json=ride_requested_data)
+    print(f"[SENT] ride_requested | Status: {response.status_code}")
 
     time.sleep(1)
 
-    # 2. ride_started
-    ride_started_data = {
-        "event_type": "ride_started",
-        "ride_id": ride_id,
-        "timestamp": datetime.now(UTC).isoformat(),
-        "driver_id": driver_id,
-        "location": pickup
-    }
+    # 2. Send ride_started
+    ride_started_data = {"ride_id": ride_id, "driver_id": driver_id, "location": pickup}
+    response = requests.post(f"{PRODUCER_URL}/ride-started", json=ride_started_data)
+    print(f"[SENT] ride_started | Status: {response.status_code}")
 
-    producer = SerializingProducer({
-        **producer_config,
-        "value.serializer": ride_started_serializer
-    })
-    producer.produce(topic="uber.ride_started", value=ride_started_data)
-    producer.flush()
-    print("[SENT] ride_started")
-
-    # 3. location_update
+    # 3. Send location_update
     for loc in route:
-        location_data = {
-            "event_type": "location_update",
-            "ride_id": ride_id,
-            "timestamp": datetime.now(UTC).isoformat(),
-            "driver_id": driver_id,
-            "location": loc
-        }
-        producer = SerializingProducer({
-            **producer_config,
-            "value.serializer": location_update_serializer
-        })
-        producer.produce(topic="uber.location_update", value=location_data)
-        producer.flush()
-        print(f"[SENT] location_update: {loc}")
+        location_data = {"ride_id": ride_id, "driver_id": driver_id, "location": loc}
+        response = requests.post(f"{PRODUCER_URL}/location-update", json=location_data)
+        print(f"[SENT] location_update {loc} | Status: {response.status_code}")
         time.sleep(0.5)
 
-    # 4. ride_completed
-    fare = round(haversine_distance(pickup, dropoff) * 2.4, 2)
+    # 4. Send ride_completed
     completed_data = {
-        "event_type": "ride_completed",
         "ride_id": ride_id,
-        "timestamp": datetime.now(UTC).isoformat(),
         "driver_id": driver_id,
         "location": dropoff,
-        "fare": fare
+        "pickup": pickup,
+        "dropoff": dropoff,
     }
-
-    producer = SerializingProducer({
-        **producer_config,
-        "value.serializer": ride_completed_serializer
-    })
-    producer.produce(topic="uber.ride_completed", value=completed_data)
-    producer.flush()
-    print("[SENT] ride_completed")
+    response = requests.post(f"{PRODUCER_URL}/ride-completed", json=completed_data)
+    print(f"[SENT] ride_completed | Status: {response.status_code}")
 
     print("-" * 40)
     time.sleep(3)

@@ -1,4 +1,8 @@
 import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+
 import random
 import time
 import uuid
@@ -6,11 +10,11 @@ from datetime import datetime, UTC
 
 import requests
 from dotenv import load_dotenv
-from modules.geolocation import (
+from producer.modules.geolocation import (
     interpolate_route,
     random_coord_within,
 )
-from modules.postgres import load_ids
+from producer.modules.postgres import load_ids
 
 load_dotenv()
 

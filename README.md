@@ -14,126 +14,125 @@ to populate the database with sample data.
 ![kafka-based_event_pipeline.png](assets/kafka-based_event_pipeline.png)
 
 
-## 🌐 Accessing PostgreSQL in Minikube from Another Machine on Local Network
 
-### 🐘 The Problem
+# 🔌 Exposing Kubernetes Services from Minikube to External Machines
+### NOTE: This guide was generated with ChatGPT based on the provided context.
 
-Minikube is running inside a **Docker container**, which is launched from **WSL2** (a lightweight Linux VM on Windows).  
-This creates a deeply nested environment:
-
-```
-[Other machine] → [Windows Host] → [WSL2 VM] → [Docker] → [Kubernetes pod]
-```
-
-Even though your PostgreSQL pod has a Kubernetes `LoadBalancer` service, it’s only accessible from **inside** this nested chain — not from other devices on your LAN.
+This guide walks you through how to expose a service running in a Minikube cluster inside WSL2 so that it can be accessed from **another machine on your network (e.g., your Mac)**.
 
 ---
 
-### ✅ The Solution
+## 🗺️ Network Chain Overview
 
-To expose PostgreSQL externally, you need to bridge the layers manually:
+| Location        | Port    | Purpose |
+|-----------------|---------|---------|
+| Minikube inside WSL2 | 8888 | Kubernetes LoadBalancer service |
+| WSL2 loopback   | 8888    | Access Minikube via `127.0.0.1:8888` |
+| WSL2 (socat)    | 18888   | Bridges WSL2 → Windows |
+| Windows host    | 28888   | Exposes port to LAN (e.g., your Mac) |
 
-1. **Start the Minikube tunnel (inside WSL2)**  
-   This maps Kubernetes `LoadBalancer` services to the WSL2 loopback.
+## 🔧 Step-by-Step
 
-   ```bash
-   sudo minikube tunnel
-   ```
+### 1. Expose the Service in Kubernetes
 
-2. **Forward WSL2 port to Minikube service using `socat`**
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-producer
+  namespace: uber-service
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8888
+      targetPort: 8888
+  selector:
+    app: kafka-producer
+```
 
-   Replace `192.168.49.2` with the actual IP of your PostgreSQL service inside Minikube:
-
-   ```bash
-   socat TCP-LISTEN:15432,fork,reuseaddr TCP:192.168.49.2:5432
-   ```
-    This command listens on port `15432` in WSL2 and forwards it to the PostgreSQL service running in Minikube.
-
-
-3. **Forward Windows port to WSL2 using `netsh`**
-
-   Replace `<WSL2-IP>` with your actual WSL2 IP (e.g. `172.20.143.18` — find it via `wsl hostname -I`):
-
-   ```powershell
-   netsh interface portproxy add v4tov4 `
-     listenport=5432 listenaddress=0.0.0.0 `
-     connectport=15432 connectaddress=<WSL2-IP>
-   ```
-    This command forwards all traffic on port `5432` of your Windows host to the `15432` port in WSL2, which is listening for PostgreSQL connections.
-
-
-4. **Allow port 5432 through Windows Firewall (if needed)**
-
-   ```powershell
-   netsh advfirewall firewall add rule name="Postgres K8s" `
-     dir=in action=allow protocol=TCP localport=5432
-   ```
-
----
-
-### 🧪 Result
-
-You can now connect to your PostgreSQL service running in Kubernetes from **any machine on the same LAN** using:
+Run this and make sure `minikube tunnel` is running. Inside WSL2:
 
 ```bash
-psql -h <Windows-IP> -p 5432 -U <user> -d <db>
+curl localhost:8888/health
+# Should return {"status":"ok"}
 ```
 
-This setup avoids using Ingress or cloud load balancers — all local, all manual, and works beautifully.
+---
 
-A similar approach can be used for other services like Kafka, Redis, etc.
+### 2. Set Up socat in WSL2
 
-## 🔌 Accessing Kafka UI from LAN
-
-When running Minikube inside Docker via WSL2, `LoadBalancer` services (like Kafka UI) are not directly reachable from other machines on the network.
-
-To expose Kafka UI externally, apply this manual bridge:
-
-### ✅ Kafka UI External Access
-
-1. **Start the Minikube tunnel inside WSL2:**
-
-   ```bash
-   sudo minikube tunnel
-   ```
-
-2. **Forward WSL2 port to Minikube service via `socat`:**
-
-   Find the Kafka UI LoadBalancer IP:
-
-   ```bash
-   kubectl get svc kafka-ui -n uber-service
-   ```
-
-   Then forward:
-
-   ```bash
-   socat TCP-LISTEN:18080,fork,reuseaddr TCP:<EXTERNAL-IP>:8080
-   ```
-
-3. **Forward Windows port to WSL2 using `netsh` (PowerShell):**
-
-   ```powershell
-   netsh interface portproxy add v4tov4 `
-     listenport=18080 listenaddress=0.0.0.0 `
-     connectport=18080 connectaddress=<WSL2-IP>
-   ```
-
-   Find WSL2 IP via `wsl hostname -I`.
-
-4. **(Optional) Allow through Windows Firewall:**
-
-   ```powershell
-   netsh advfirewall firewall add rule name="Kafka UI K8s" `
-     dir=in action=allow protocol=TCP localport=18080
-   ```
-
-### 🧪 Result
-
-You can now access Kafka UI from any device on your local network via:
-
+```bash
+socat TCP-LISTEN:18888,fork,reuseaddr TCP:127.0.0.1:8888
 ```
-http://<Windows-IP>:18080
+
+This bridges WSL2 port `18888` → Minikube service on `127.0.0.1:8888`.
+
+---
+
+### 3. Set Up Portproxy in PowerShell (on Windows)
+
+First, find your WSL2 IP:
+
+```bash
+wsl hostname -I
+```
+
+Then set up the proxy:
+
+```powershell
+netsh interface portproxy add v4tov4 `
+  listenport=28888 listenaddress=0.0.0.0 `
+  connectport=18888 connectaddress=<WSL2-IP>
+```
+
+---
+
+### 4. Open the Firewall
+
+```powershell
+netsh advfirewall firewall add rule name="ExposeAppOn28888" `
+  dir=in action=allow protocol=TCP localport=28888
+```
+
+---
+
+## ✅ Test Everything
+
+- On Windows:
+  ```powershell
+  curl http://localhost:18888/health
+  ```
+
+- On LAN machine (Mac):
+  ```bash
+  curl http://<windows-ip>:28888/health
+  ```
+
+---
+
+## 🧹 Cleanup
+
+Remove portproxy:
+
+```powershell
+netsh interface portproxy delete v4tov4 listenport=28888 listenaddress=0.0.0.0
+```
+
+Kill socat in WSL2:
+
+```bash
+pkill -f "socat TCP-LISTEN"
+```
+
+---
+
+## 🧠 Conceptual Diagram
+
+```text
+(Mac) --> (Windows Host) --> (WSL2) --> (Minikube)
+ :28888      :28888           :18888     :8888
+               |                |          |
+          portproxy         socat     Kubernetes
 ```
 
 ---

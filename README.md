@@ -171,10 +171,8 @@ The following services are exposed externally using the `LoadBalancer` type in K
 | Service Name       | Namespace      | Port  | Description                          |
 |--------------------|----------------|-------|--------------------------------------|
 | `kafka-producer`   | `uber-service` | 8888  | HTTP API exposed by FastAPI Producer |
-| `schema-registry`  | `uber-service` | 8081  | Confluent Schema Registry            |
 | `kafka-ui`         | `uber-service` | 8080  | Web UI to monitor Kafka              |
 | `postgres`         | `uber-service` | 5432  | PostgreSQL instance                  |
-| `kafka`            | `uber-service` | 9094  | Kafka broker (external listener)     |
 
 To expose these externally (e.g., for access from another device), run:
 

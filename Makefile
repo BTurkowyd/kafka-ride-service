@@ -4,7 +4,7 @@ build-images:
 	docker build -t uber-producer:latest -f producer/Dockerfile .
 
 create-namespace:
-	 kubectl apply -f k8s-manifests/namespace.yml
+	 kubectl apply -f k8s-manifests/k8s-namespace.yaml
 
 add-common-env-config-map:
 	kubectl create configmap common-env \
@@ -19,8 +19,19 @@ add-postgres-secrets:
 create-resources:
 	kubectl apply -f k8s-manifests/k8s-postgres.yaml && \
 	kubectl apply -f k8s-manifests/k8s-kafka-zookeeper.yaml && \
-	kubectl apply -f k8s-manifests/k8s-consumers.yaml && \
-	kubectl apply -f k8s-manifests/k8s-producer.yaml
+	kubectl apply -f k8s-manifests/k8s-producer.yaml && \
+	helm install consumer-ride-requested ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/ride-requested.yaml && \
+	helm install consumer-ride-started ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/ride-started.yaml && \
+	helm install consumer-ride-completed ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/ride-completed.yaml && \
+	helm install consumer-location-update ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/location-update.yaml && \
+	helm install consumer-dlq ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/dlq.yaml
+
+create-consumers:
+	helm install consumer-ride-requested ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/ride-requested.yaml
+	helm install consumer-ride-started ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/ride-started.yaml
+	helm install consumer-ride-completed ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/ride-completed.yaml
+	helm install consumer-location-update ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/location-update.yaml
+	helm install consumer-dlq ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/dlq.yaml
 
 socat-ports:
 	# Kafka

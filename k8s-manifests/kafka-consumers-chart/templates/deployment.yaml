@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer-{{ .Values.consumerModule | replace "_" "-" }}
+  namespace: uber-service
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: consumer-{{ .Values.consumerModule | replace "_" "-" }}
+  template:
+    metadata:
+      labels:
+        app: consumer-{{ .Values.consumerModule | replace "_" "-" }}
+    spec:
+      containers:
+        - name: consumer
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "-m", "consumers.modules.consumers.{{ .Values.consumerModule }}"]
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.envFrom.configMapRef }}
+            - secretRef:
+                name: {{ .Values.envFrom.secretRef }}
+          resources:
+            requests:
+              memory: {{ .Values.resources.requests.memory }}
+              cpu: {{ .Values.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.resources.limits.memory }}
+              cpu: {{ .Values.resources.limits.cpu }}

@@ -25,6 +25,13 @@ spec:
                 name: common-env
             - secretRef:
                 name: postgres-secret
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
 
 ---
 apiVersion: apps/v1
@@ -47,30 +54,17 @@ spec:
           image: uber-consumer:latest
           imagePullPolicy: Never
           command: ["python", "-m", "consumers.modules.consumers.consumer_ride_started"]
-          env:
-            - name: KAFKA_BROKER
-              value: kafka.uber-service.svc.cluster.local:9092
-            - name: SCHEMA_REGISTRY_URL
-              value: http://schema-registry.uber-service.svc.cluster.local:8081
-            - name: POSTGRES_HOST
-              value: postgres.uber-service.svc.cluster.local
-            - name: POSTGRES_PORT
-              value: "5432"
-            - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_USER
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_PASSWORD
-            - name: POSTGRES_DB
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_DB
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
 
 ---
 apiVersion: apps/v1
@@ -93,30 +87,18 @@ spec:
           image: uber-consumer:latest
           imagePullPolicy: Never
           command: [ "python", "-m", "consumers.modules.consumers.consumer_ride_completed" ]
-          env:
-            - name: KAFKA_BROKER
-              value: kafka.uber-service.svc.cluster.local:9092
-            - name: SCHEMA_REGISTRY_URL
-              value: http://schema-registry.uber-service.svc.cluster.local:8081
-            - name: POSTGRES_HOST
-              value: postgres.uber-service.svc.cluster.local
-            - name: POSTGRES_PORT
-              value: "5432"
-            - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_USER
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_PASSWORD
-            - name: POSTGRES_DB
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_DB
+          envFrom:
+            - configMapRef:
+                name: common-env
+            - secretRef:
+                name: postgres-secret
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
 
 ---
 apiVersion: apps/v1
@@ -139,31 +121,18 @@ spec:
           image: uber-consumer:latest
           imagePullPolicy: Never
           command: ["python", "-m", "consumers.modules.consumers.consumer_location_update"]
-          env:
-            - name: KAFKA_BROKER
-              value: kafka.uber-service.svc.cluster.local:9092
-            - name: SCHEMA_REGISTRY_URL
-              value: http://schema-registry.uber-service.svc.cluster.local:8081
-            - name: POSTGRES_HOST
-              value: postgres.uber-service.svc.cluster.local
-            - name: POSTGRES_PORT
-              value: "5432"
-            - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_USER
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_PASSWORD
-            - name: POSTGRES_DB
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_DB
-
+          envFrom:
+            - configMapRef:
+                name: common-env
+            - secretRef:
+                name: postgres-secret
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -185,27 +154,145 @@ spec:
           image: uber-consumer:latest
           imagePullPolicy: Never
           command: ["python", "-m", "consumers.modules.consumers.consumer_dlq"]
-          env:
-            - name: KAFKA_BROKER
-              value: kafka.uber-service.svc.cluster.local:9092
-            - name: SCHEMA_REGISTRY_URL
-              value: http://schema-registry.uber-service.svc.cluster.local:8081
-            - name: POSTGRES_HOST
-              value: postgres.uber-service.svc.cluster.local
-            - name: POSTGRES_PORT
-              value: "5432"
-            - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_USER
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_PASSWORD
-            - name: POSTGRES_DB
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_DB
+          envFrom:
+            - configMapRef:
+                name: common-env
+            - secretRef:
+                name: postgres-secret
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: consumer-ride-requested-hpa
+  namespace: uber-service
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: consumer-ride-requested
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 75
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: consumer-ride-started-hpa
+  namespace: uber-service
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: consumer-ride-started
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 75
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: consumer-ride-completed-hpa
+  namespace: uber-service
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: consumer-ride-completed
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 75
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: consumer-location-update-hpa
+  namespace: uber-service
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: consumer-location-update
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 75
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: consumer-dlq-hpa
+  namespace: uber-service
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: consumer-dlq
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 75

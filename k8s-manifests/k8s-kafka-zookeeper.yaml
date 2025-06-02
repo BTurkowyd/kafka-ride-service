@@ -78,20 +78,6 @@ spec:
   ports:
     - port: 9092
       targetPort: 9092
-      
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: kafka-external
-  namespace: uber-service
-spec:
-  type: LoadBalancer
-  selector:
-    app: kafka
-  ports:
-    - port: 9094
-      targetPort: 9092
 
 ---
 apiVersion: apps/v1
@@ -172,20 +158,6 @@ spec:
               value: http://0.0.0.0:8081
             - name: SCHEMA_REGISTRY_DEBUG
               value: "true"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: schema-registry
-  namespace: uber-service
-spec:
-  type: LoadBalancer
-  selector:
-    app: schema-registry
-  ports:
-    - port: 8081
-      targetPort: 8081
-      protocol: TCP
 
 ---
 # Kafka UI Service

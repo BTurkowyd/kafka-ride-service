@@ -1,4 +1,5 @@
 # 🚕 Kafka Ride Service
+### NOTE: This guide was generated with ChatGPT based on the provided context.
 
 ## 🛠 Purpose of This Project
 
@@ -54,10 +55,7 @@ minikube start --driver=docker
 
 ### 📡 Kafka Ecosystem
 
-These are provisioned by `k8s/k8s-kafka-zookeeper.yaml`, but you’ll need to **tunnel access** using:
-
-- `minikube tunnel` to expose LoadBalancer services
-- Optional `socat` or `netsh` if using Minikube via WSL2
+These are provisioned by `k8s/k8s-kafka-zookeeper.yaml`. 
 
 ---
 
@@ -75,8 +73,8 @@ Postgres credentials should be set via Kubernetes secrets or `.env`.
 
 #### 🧰 Makefile Targets
 
-These make commands streamline building images, configuring Kubernetes, and exposing local services via socat.
-To use them, in terminal from the root directory use `make COMMAND`.
+These `make` commands streamline building images, configuring Kubernetes, and exposing local services via `socat`.
+To use them, in terminal from the root directory of the repository use `make COMMAND`.
 
 #### 🏗️ `build-images`
 
@@ -152,7 +150,7 @@ Used to hit HTTP endpoints like `/ride-request`.
 | `topics/`         | Kafka topic bootstrap script             |
 
 ---
-### 🧾 Environment Variables
+### 🧾 Environment Variables in ConfigMap and Secrets
 
 | Variable             | Description                         | Default                       |
 |----------------------|-------------------------------------|-------------------------------|
@@ -204,7 +202,7 @@ To access some of those services (especially Kafka UI, Potgres and the producer 
 ### Event Generator
 
 - A Python script simulating real ride activity.
-- Loads real driver and passenger IDs from Postgres.
+- Loads driver and passenger IDs from Postgres.
 - Generates random routes, coordinates, and timestamps.
 - Sends HTTP requests to the producer API instead of producing directly to Kafka (decoupling transport from generation).
 
@@ -260,7 +258,6 @@ If you run Minikube **directly from PowerShell** using the Docker driver:
 ---
 
 # 🔌 Exposing Kubernetes Services from Minikube to External Machines
-### NOTE: This guide was generated with ChatGPT based on the provided context.
 
 This guide walks you through how to expose a service running in a Minikube cluster inside WSL2 so that it can be accessed from **another machine on your network (e.g., your Mac)**.
 
@@ -325,7 +322,7 @@ Then set up the proxy:
 
 ```powershell
 netsh interface portproxy add v4tov4 `
-  listenport=28888 listenaddress=0.0.0.0 `
+  listenport=8888 listenaddress=0.0.0.0 `
   connectport=18888 connectaddress=<WSL2-IP>
 ```
 
@@ -334,8 +331,8 @@ netsh interface portproxy add v4tov4 `
 ### 4. Open the Firewall
 
 ```powershell
-netsh advfirewall firewall add rule name="ExposeAppOn28888" `
-  dir=in action=allow protocol=TCP localport=28888
+netsh advfirewall firewall add rule name="ExposeAppOn8888" `
+  dir=in action=allow protocol=TCP localport=8888
 ```
 
 ---

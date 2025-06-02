@@ -20,18 +20,25 @@ create-resources:
 	kubectl apply -f k8s-manifests/k8s-postgres.yaml && \
 	kubectl apply -f k8s-manifests/k8s-kafka-zookeeper.yaml && \
 	kubectl apply -f k8s-manifests/k8s-producer.yaml && \
-	helm install consumer-ride-requested ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/ride-requested.yaml && \
-	helm install consumer-ride-started ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/ride-started.yaml && \
-	helm install consumer-ride-completed ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/ride-completed.yaml && \
-	helm install consumer-location-update ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/location-update.yaml && \
-	helm install consumer-dlq ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/dlq.yaml
+	$(MAKE) deploy-consumers
 
-create-consumers:
-	helm install consumer-ride-requested ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/ride-requested.yaml
-	helm install consumer-ride-started ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/ride-started.yaml
-	helm install consumer-ride-completed ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/ride-completed.yaml
-	helm install consumer-location-update ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/location-update.yaml
-	helm install consumer-dlq ./k8s-manifests/kafka-consumers-chart -f k8s-manifests/kafka-consumers-chart/consumers/dlq.yaml
+deploy-consumers:
+	$(MAKE) deploy-consumer name=ride-requested
+	$(MAKE) deploy-consumer name=ride-started
+	$(MAKE) deploy-consumer name=ride-completed
+	$(MAKE) deploy-consumer name=location-update
+	$(MAKE) deploy-consumer name=dlq
+
+deploy-consumer:
+	helm upgrade --install consumer-$(name) ./k8s-manifests/kafka-consumers-chart \
+		-f k8s-manifests/kafka-consumers-chart/consumers/$(name).yaml
+
+delete-consumers:
+	helm uninstall consumer-ride-requested
+	helm uninstall consumer-ride-started
+	helm uninstall consumer-ride-completed
+	helm uninstall consumer-location-update
+	helm uninstall consumer-dlq
 
 socat-ports:
 	# Kafka

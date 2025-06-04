@@ -14,15 +14,17 @@ faker.add_provider(VehicleProvider)
 load_dotenv()
 
 DB_CONFIG = {
-    'dbname':os.getenv("POSTGRES_DB"),
-    'user': os.getenv("POSTGRES_USER"),
-    'password': os.getenv("POSTGRES_PASSWORD"),
-    'host': '192.168.178.93',
-    'port': 5432
+    "dbname": os.getenv("POSTGRES_DB"),
+    "user": os.getenv("POSTGRES_USER"),
+    "password": os.getenv("POSTGRES_PASSWORD"),
+    "host": "192.168.178.93",
+    "port": 5432,
 }
+
 
 def create_connection():
     return psycopg2.connect(**DB_CONFIG)
+
 
 def seed_drivers(cursor, count=10):
     for _ in range(count):
@@ -31,17 +33,19 @@ def seed_drivers(cursor, count=10):
         rating = round(random.uniform(3.5, 5.0), 2)
         cursor.execute(
             "INSERT INTO drivers (name, vehicle, rating) VALUES (%s, %s, %s);",
-            (name, vehicle, rating)
+            (name, vehicle, rating),
         )
+
 
 def seed_passengers(cursor, count=50):
     for _ in range(count):
         name = faker.name()
-        signup_date = faker.date_between(start_date='-2y', end_date='today')
+        signup_date = faker.date_between(start_date="-2y", end_date="today")
         cursor.execute(
             "INSERT INTO passengers (name, signup_date) VALUES (%s, %s);",
-            (name, signup_date)
+            (name, signup_date),
         )
+
 
 if __name__ == "__main__":
     conn = create_connection()

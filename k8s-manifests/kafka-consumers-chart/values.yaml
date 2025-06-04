@@ -17,7 +17,15 @@ envFrom:
   configMapRef: common-env
   secretRef: postgres-secret
 
-env: []
+env:
+  - name: KAFKA_BROKER
+    value: kafka.uber-service.svc.cluster.local:9092
+  - name: SCHEMA_REGISTRY_URL
+    value: http://schema-registry.uber-service.svc.cluster.local:8081
+  - name: POSTGRES_HOST
+    value: postgres.uber-service.svc.cluster.local
+  - name: POSTGRES_PORT
+    value: "5432"
 
 hpa:
   enabled: true

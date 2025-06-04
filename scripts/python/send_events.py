@@ -14,7 +14,6 @@ from producer.modules.geolocation import (
     interpolate_route,
     random_coord_within,
 )
-from producer.modules.postgres import load_ids
 
 load_dotenv()
 

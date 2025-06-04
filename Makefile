@@ -76,6 +76,16 @@ socat-ports:
 
 socat-kill:
 	@echo "Killing all socat processes..."
+	@pkill -f "socat TCP-LISTEN"
+
+
+deploy-monitoring:
+	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts && \
+	helm repo add grafana https://grafana.github.io/helm-charts && \
+	helm repo update && \
+	helm install prometheus prometheus-community/prometheus --namespace monitoring --create-namespace && \
+	helm install grafana grafana/grafana --namespace monitoring --create-namespace
+
 	@pkill -f "socat TCP-LISTEN" || true
 
 clean:

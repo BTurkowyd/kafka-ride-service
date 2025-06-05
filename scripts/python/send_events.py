@@ -14,7 +14,6 @@ from producer.modules.geolocation import (
     interpolate_route,
     random_coord_within,
 )
-from producer.modules.postgres import load_ids
 
 load_dotenv()
 
@@ -22,7 +21,12 @@ load_dotenv()
 PRODUCER_URL = os.getenv("PRODUCER_URL", "http://localhost:8888")
 
 # Load known users
-drivers, passengers = load_ids()
+drivers = requests.get(f"{PRODUCER_URL}/get-drivers").json().get("driver_ids", [])
+passengers = (
+    requests.get(f"{PRODUCER_URL}/get-passengers").json().get("passenger_ids", [])
+)
+
+print(f"Loaded {drivers} drivers and {passengers} passengers.")
 
 # Main simulation loop
 for _ in range(10):

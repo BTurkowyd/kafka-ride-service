@@ -1,13 +1,12 @@
 import os
 from datetime import datetime, UTC
-from uuid import UUID
-from typing import List
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from confluent_kafka import SerializingProducer
 from confluent_kafka.serialization import StringSerializer
+from producer.modules.postgres import DB_CONFIG
+import psycopg2
 
 from producer.modules.serializer import (
     ride_requested_serializer,
@@ -135,6 +134,44 @@ def location_update(data: LocationUpdatePayload):
         producer.produce(topic="uber.location_update", value=event)
         producer.flush()
         return {"status": "published", "event": event}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/get-passengers")
+def get_passenger():
+    """Fetch a random passenger from the database."""
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM passengers ORDER BY id;")
+        passenger_id = cursor.fetchall()
+        if not passenger_id:
+            raise HTTPException(status_code=404, detail="No passengers found")
+        passenger_id = [pid[0] for pid in passenger_id]  # Flatten the list of tuples
+
+        conn.close()
+        return {"passenger_ids": passenger_id}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/get-drivers")
+def get_driver():
+    """Fetch a random driver from the database."""
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM drivers ORDER BY id;")
+        driver_id = cursor.fetchall()
+        if not driver_id:
+            raise HTTPException(status_code=404, detail="No drivers found")
+        driver_id = [did[0] for did in driver_id]  # Flatten the list of tuples
+
+        conn.close()
+        return {"driver_ids": driver_id}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

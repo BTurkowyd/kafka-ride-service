@@ -8,8 +8,7 @@
 NAMESPACE ?= uber-service
 ENV_FILE ?= .env
 
-.PHONY: build-images create-namespace add-common-env-config-map add-postgres-secrets create-resources deploy-consumers deploy-consumer delete-consumers socat-ports socat-kill clean
-deploy-monitoring delete-monitoring port-forward-grafana port-forward-prometheus
+.PHONY: build-images create-namespace add-common-env-config-map add-postgres-secrets create-resources deploy-consumers deploy-consumer delete-consumers socat-ports socat-kill clean deploy-monitoring delete-monitoring port-forward-grafana port-forward-prometheus
 
 build-images:
 	@echo "Building Docker images for producer and consumer..."
@@ -74,6 +73,10 @@ socat-ports:
 	socat TCP-LISTEN:18080,fork,reuseaddr TCP:127.0.0.1:8080 &
 	# Producer
 	socat TCP-LISTEN:18888,fork,reuseaddr TCP:127.0.0.1:8888 &
+	# Prometheus
+	socat TCP-LISTEN:19090,fork,reuseaddr TCP:127.0.1:9090 &
+	# Grafana
+	socat TCP-LISTEN:13000,fork,reuseaddr TCP:127.0.1:3000 &
 
 socat-kill:
 	@echo "Killing all socat processes..."

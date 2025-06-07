@@ -1,25 +1,44 @@
+# Improved Makefile for kafka-ride-service
+# Features:
+# - Idempotent ConfigMap and Secret creation
+# - .PHONY targets
+# - User feedback via @echo
+# - Parameterization for namespace
+
+NAMESPACE ?= uber-service
+ENV_FILE ?= .env
+
+.PHONY: build-images create-namespace add-common-env-config-map add-postgres-secrets create-resources deploy-consumers deploy-consumer delete-consumers socat-ports socat-kill clean
+
 build-images:
+	@echo "Building Docker images for producer and consumer..."
 	@eval $$(minikube docker-env) && \
 	docker build -t uber-consumer:latest -f consumers/Dockerfile . && \
 	docker build -t uber-producer:latest -f producer/Dockerfile .
 
 create-namespace:
-	 kubectl apply -f k8s-manifests/k8s-namespace.yaml
+	@echo "Applying namespace manifest..."
+	kubectl apply -f k8s-manifests/k8s-namespace.yaml
 
 add-common-env-config-map:
+	@echo "Ensuring ConfigMap 'common-env' exists (idempotent)..."
+	-@kubectl delete configmap common-env -n $(NAMESPACE) --ignore-not-found
 	kubectl create configmap common-env \
-	  --from-env-file=.env \
-	  -n uber-service
+	  --from-env-file=$(ENV_FILE) \
+	  -n $(NAMESPACE)
 
 add-postgres-secrets:
+	@echo "Ensuring Secret 'postgres-secret' exists (idempotent)..."
+	-@kubectl delete secret postgres-secret -n $(NAMESPACE) --ignore-not-found
 	kubectl create secret generic postgres-secret \
-	  --from-env-file=.env \
-	  -n uber-service
+	  --from-env-file=$(ENV_FILE) \
+	  -n $(NAMESPACE)
 
 create-resources:
-	kubectl apply -f k8s-manifests/k8s-postgres.yaml && \
-	kubectl apply -f k8s-manifests/k8s-kafka-zookeeper.yaml && \
-	kubectl apply -f k8s-manifests/k8s-producer.yaml && \
+	@echo "Applying all K8s resources..."
+	kubectl apply -f k8s-manifests/k8s-postgres.yaml
+	kubectl apply -f k8s-manifests/k8s-kafka-zookeeper.yaml
+	kubectl apply -f k8s-manifests/k8s-producer.yaml
 	$(MAKE) deploy-consumers
 
 deploy-consumers:
@@ -30,32 +49,40 @@ deploy-consumers:
 	$(MAKE) deploy-consumer name=dlq
 
 deploy-consumer:
+	@echo "Deploying consumer: $(name)"
 	helm upgrade --install consumer-$(name) ./k8s-manifests/kafka-consumers-chart \
 		-f k8s-manifests/kafka-consumers-chart/consumers/$(name).yaml
 
 delete-consumers:
-	helm uninstall consumer-ride-requested
-	helm uninstall consumer-ride-started
-	helm uninstall consumer-ride-completed
-	helm uninstall consumer-location-update
-	helm uninstall consumer-dlq
+	@echo "Deleting all consumer releases..."
+	helm uninstall consumer-ride-requested || true
+	helm uninstall consumer-ride-started || true
+	helm uninstall consumer-ride-completed || true
+	helm uninstall consumer-location-update || true
+	helm uninstall consumer-dlq || true
 
 socat-ports:
+	@echo "Forwarding local ports to services inside Minikube..."
 	# Kafka
 	socat TCP-LISTEN:19094,fork,reuseaddr TCP:127.0.0.1:9094 &
-
 	# Schema Registry
 	socat TCP-LISTEN:18081,fork,reuseaddr TCP:127.0.0.1:8081 &
-
 	# Postgres
 	socat TCP-LISTEN:15432,fork,reuseaddr TCP:127.0.0.1:5432 &
-
 	# Kafka UI
 	socat TCP-LISTEN:18080,fork,reuseaddr TCP:127.0.0.1:8080 &
-
 	# Producer
 	socat TCP-LISTEN:18888,fork,reuseaddr TCP:127.0.0.1:8888 &
 
 socat-kill:
 	@echo "Killing all socat processes..."
-	@pkill -f "socat TCP-LISTEN"
+	@pkill -f "socat TCP-LISTEN" || true
+
+clean:
+	@echo "Cleaning up all resources..."
+	kubectl delete -f k8s-manifests/k8s-postgres.yaml --ignore-not-found
+	kubectl delete -f k8s-manifests/k8s-kafka-zookeeper.yaml --ignore-not-found
+	kubectl delete -f k8s-manifests/k8s-producer.yaml --ignore-not-found
+	kubectl delete configmap common-env -n $(NAMESPACE) --ignore-not-found
+	kubectl delete secret postgres-secret -n $(NAMESPACE) --ignore-not-found
+	$(MAKE) delete-consumers

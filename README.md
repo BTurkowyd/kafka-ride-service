@@ -1,9 +1,41 @@
 # 🚕 Kafka Ride Service
-### NOTE: This guide was generated with ChatGPT based on the provided context.
 
-## 🛠 Purpose of This Project
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/release/python-3110/)
+[![License](https://img.shields.io/github/license/BTurkowyd/kafka-ride-service)](LICENSE)
 
-This project simulates an **event-driven ride-hailing platform**, built to demonstrate real-world usage of:
+A repository focused on implementing Apache Kafka combined with Kubernetes and PostgreSQL to simulate a simplistic "Uber-like" service.
+
+---
+
+## Table of Contents
+
+- [🚕 Kafka Ride Service](#-kafka-ride-service)
+  - [Table of Contents](#table-of-contents)
+  - [Project Overview](#project-overview)
+  - [Quickstart](#quickstart)
+  - [Prerequisites](#prerequisites)
+  - [Directory Structure](#directory-structure)
+  - [Configuration](#configuration)
+  - [How It Works](#how-it-works)
+    - [Producer Service](#producer-service)
+    - [Event Generator](#event-generator)
+    - [Consumer Services](#consumer-services)
+    - [PostgreSQL Database](#postgresql-database)
+    - [Kafka Topics](#kafka-topics)
+  - [Kubernetes \& Networking](#kubernetes--networking)
+    - [Exposing Services](#exposing-services)
+      - [Example: Exposing kafka-producer](#example-exposing-kafka-producer)
+    - [Networking \& LAN Access](#networking--lan-access)
+  - [Testing](#testing)
+  - [Troubleshooting](#troubleshooting)
+  - [Contributing](#contributing)
+  - [License](#license)
+
+---
+
+## Project Overview
+
+This project simulates an **event-driven ride-hailing platform**, demonstrating real-world usage of:
 
 - **Kafka** as a message broker
 - **FastAPI** as the producer-facing HTTP service
@@ -11,146 +43,88 @@ This project simulates an **event-driven ride-hailing platform**, built to demon
 - **Minikube** and **Kubernetes** for orchestration
 - **PostgreSQL** for reference data (drivers, passengers, etc.)
 
-The goal is to simulate ride events (e.g., `ride_requested`, `ride_started`, `location_update`, `ride_completed`) and send them into Kafka, either through a script or via a REST API exposed by a FastAPI Kafka producer.
+The goal is to simulate ride events (`ride_requested`, `ride_started`, `location_update`, `ride_completed`) and send them into Kafka, either through a script or via a REST API exposed by a FastAPI Kafka producer.
 
 ![kafka-based_event_pipeline.png](assets/kafka-based_event_pipeline.png)
 
-## ✅ Prerequisites for Running the Kafka Ride Service
+---
 
-### 💻 Required Software
+## Quickstart
 
-#### 🐍 Python 3.11+
-Used across both producers and consumers.
-- Recommended: Use a virtual environment (e.g. `uv`, `venv`, or `virtualenv`)
-- Install from [https://www.python.org](https://www.python.org)
+The following steps will get you up and running quickly on your local machine (using Minikube and Docker).
 
-#### 📦 Poetry or uv (for dependency management)
-Project uses `pyproject.toml` and `uv.lock` for dependencies.
-- Recommended: `uv` for speed → [https://github.com/astral-sh/uv](https://github.com/astral-sh/uv)
+**1. Clone the repository**
+
 ```bash
+git clone https://github.com/BTurkowyd/kafka-ride-service.git
+cd kafka-ride-service
+```
+
+**2. Install Python (3.11+) and [uv](https://github.com/astral-sh/uv)**
+
+```bash
+# Recommended: install uv for fast dependency management
 curl -Ls https://astral.sh/uv/install.sh | sh
 ```
 
----
+**3. Set up your virtual environment and install dependencies**
 
-### 🐋 Docker and 🐳 Docker Compose (optional)
-Used for:
-- Containerizing producer/consumer services (`Dockerfile`)
-- Building images used in Kubernetes
+```bash
+uv sync  # uses uv.lock for dependency resolution
+```
+*Alternatively, use `uv pip install -r uv.lock` if you prefer lockfile-only installations.*
 
-> Install from: [https://www.docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop)
+**4. Start Minikube and build images**
 
----
-
-### ☸️ Kubernetes via Minikube (or alternative local cluster)
-To run manifests from `k8s-manifests/`, you'll need:
-- [Minikube](https://minikube.sigs.k8s.io/docs/start/)
-- `kubectl` CLI
-
-If running Minikube on Windows, use Docker driver for easiest LAN access:
 ```bash
 minikube start --driver=docker
-```
----
-
-### 📡 Kafka Ecosystem
-
-These are provisioned by `k8s/k8s-kafka-zookeeper.yaml`. 
-
----
-
-### 🗃️ PostgreSQL
-
-Required by both the producer and consumer services:
-- A Postgres deployment is defined in `k8s-manifests/k8s-postgres.yaml`
-- Initialization via `scripts/sql/create_tables.sql`
-
-Postgres credentials should be set via Kubernetes secrets or `.env`.
-
----
-
-### 🧪 Tools for Testing & Development
-
-#### 🧰 Makefile Targets
-
-These `make` commands streamline building images, configuring Kubernetes, and exposing local services via `socat`.
-To use them, in terminal from the root directory of the repository use `make COMMAND`.
-
-#### 🏗️ `build-images`
-
-Builds Docker images for the Kafka consumer and producer using the Docker daemon inside Minikube.
-
-```bash
 make build-images
 ```
 
-#### 🛡️ `create-namespace`
-
-Creates the `uber-service` namespace in Kubernetes.
+**5. Deploy resources to Kubernetes**
 
 ```bash
 make create-namespace
-```
-
-#### 🧾 `add-common-env-config-map`
-
-Creates a `ConfigMap` from your local `.env` file under the `uber-service` namespace.
-
-```bash
 make add-common-env-config-map
-```
-
-#### 🔐 `add-postgres-secrets`
-
-Creates a Kubernetes **Secret** from your `.env` file for use with PostgreSQL credentials.
-
-```bash
 make add-postgres-secrets
-```
-
-#### 🚀 `create-resources`
-
-Applies all required Kubernetes manifests to launch the system:
-
-```bash
 make create-resources
+minikube tunnel
 ```
 
-#### 🌉 `socat-ports`
+**6. Simulate events or use the API**
 
-Bridges internal Kubernetes services (inside WSL2 or Minikube) to your Windows host using `socat`.
-
-```bash
-make socat-ports
-```
-
-#### ❌ `socat-kill`
-
-Stops all running `socat` port-forwarding processes.
-
-```bash
-make socat-kill
-```
+- Use the event generator script in `scripts/`
+- Or, interact with the FastAPI endpoints (see [API Usage](#how-it-works))
 
 ---
 
-#### 📜 Curl
-Used to hit HTTP endpoints like `/ride-request`.
+## Prerequisites
+
+- **Python 3.11+** (Recommended: use a virtual environment)
+- **uv** for dependency management (Poetry is an alternative, not the primary approach)
+- **Docker** & **Docker Compose** (optional, for local dev)
+- **Minikube** & **kubectl** (for Kubernetes)
+- **curl** (for testing endpoints)
 
 ---
 
-### 📁 Directory Overview
+## Directory Structure
 
-| Directory         | Purpose                                  |
-|------------------|------------------------------------------|
-| `producer/`       | Kafka event producer (FastAPI-based)     |
-| `consumers/`      | Kafka event consumers (Python scripts)   |
-| `scripts/`        | Event simulation + SQL bootstrap         |
-| `k8s-manifests/`  | Kubernetes manifests for deployment      |
-| `topics/`         | Kafka topic bootstrap script             |
+| Directory          | Purpose                                  |
+|--------------------|------------------------------------------|
+| `producer/`        | Kafka event producer (FastAPI-based)     |
+| `consumers/`       | Kafka event consumers (Python scripts)   |
+| `scripts/`         | Event simulation & SQL bootstrap         |
+| `k8s-manifests/`   | Kubernetes manifests for deployment      |
+| `assets/`          | Images and documentation assets          |
+| `docs/`            | Extended documentation and guides        |
 
 ---
-### 🧾 Environment Variables in ConfigMap and Secrets
+
+## Configuration
+
+Copy `.env.example` to `.env` and adjust as needed.  
+All environment variables are documented here:
 
 | Variable             | Description                         | Default                       |
 |----------------------|-------------------------------------|-------------------------------|
@@ -164,31 +138,8 @@ Used to hit HTTP endpoints like `/ride-request`.
 | `PRODUCER_URL`       | HTTP base URL of Kafka producer     | `http://localhost:8888`       |
 
 ---
-### 🌐 Exposed LoadBalancer Services in Kubernetes
 
-The following services are exposed externally using the `LoadBalancer` type in Kubernetes. They are accessible via their corresponding ports once `minikube tunnel` is running.
-
-| Service Name       | Namespace      | Port  | Description                          |
-|--------------------|----------------|-------|--------------------------------------|
-| `kafka-producer`   | `uber-service` | 8888  | HTTP API exposed by FastAPI Producer |
-| `kafka-ui`         | `uber-service` | 8080  | Web UI to monitor Kafka              |
-| `postgres`         | `uber-service` | 5432  | PostgreSQL instance                  |
-
-To expose these externally (e.g., for access from another device), run:
-
-```powershell
-minikube tunnel
-```
-
----
-### Tunenl access to minikube cluster
-To access some of those services (especially Kafka UI, Potgres and the producer deployment), you will need to expose the minikube cluster via **tunnel access** using:
-
-- `minikube tunnel` to expose LoadBalancer services
-- Optional `socat` or `netsh` if using Minikube via WSL2
-
----
-## 📡 System Overview
+## How It Works
 
 ### Producer Service
 
@@ -199,7 +150,7 @@ To access some of those services (especially Kafka UI, Potgres and the producer 
 
 ### Event Generator
 
-- A Python script simulating real ride activity.
+- Python script simulating real ride activity.
 - Loads driver and passenger IDs from Postgres.
 - Generates random routes, coordinates, and timestamps.
 - Sends HTTP requests to the producer API instead of producing directly to Kafka (decoupling transport from generation).
@@ -222,7 +173,7 @@ To access some of those services (especially Kafka UI, Potgres and the producer 
 - Exposed as a `LoadBalancer` service in Kubernetes.
 - Schema initialization is handled by `scripts/sql/create_tables.sql`.
 
-### 📡 Kafka Topics
+### Kafka Topics
 
 | Topic Name              | Event Type         | Description                      |
 |-------------------------|--------------------|----------------------------------|
@@ -234,45 +185,15 @@ To access some of those services (especially Kafka UI, Potgres and the producer 
 
 ---
 
-## 🔁 Communication & Deployment Highlights
+## Kubernetes & Networking
 
-### Minikube (WSL2-Based)
+### Exposing Services
 
-To expose services outside WSL2 (e.g., to your Mac), the setup includes:
+- Use `minikube tunnel` to expose Kubernetes LoadBalancer services.
+- For WSL2 users, use `socat` and `netsh` for port forwarding if needed.
+- For simplified networking, run Minikube with the Docker driver on Windows.
 
-- `minikube tunnel` to expose Kubernetes LoadBalancer services.
-- `socat` to bridge traffic from WSL2 to Windows.
-- `netsh interface portproxy` to forward Windows ports to WSL2.
-- Windows firewall rules to expose specific ports on the LAN.
-
-### Simplified Alternative: Minikube on Windows with Docker
-
-If you run Minikube **directly from PowerShell** using the Docker driver:
-
-- You avoid the complexity of WSL2 networking.
-- Services are accessible on `localhost` without `socat` or `portproxy`.
-- LAN access only requires a firewall rule.
-
----
-
-# 🔌 Exposing Kubernetes Services from Minikube to External Machines
-
-This guide walks you through how to expose a service running in a Minikube cluster inside WSL2 so that it can be accessed from **another machine on your network (e.g., your Mac)**.
-
----
-
-## 🗺️ Network Chain Overview
-
-| Location        | Port    | Purpose |
-|-----------------|---------|---------|
-| Minikube inside WSL2 | 8888 | Kubernetes LoadBalancer service |
-| WSL2 loopback   | 8888    | Access Minikube via `127.0.0.1:8888` |
-| WSL2 (socat)    | 18888   | Bridges WSL2 → Windows |
-| Windows host    | 28888   | Exposes port to LAN (e.g., your Mac) |
-
-## 🔧 Step-by-Step
-
-### 1. Expose the Service in Kubernetes
+#### Example: Exposing kafka-producer
 
 ```yaml
 apiVersion: v1
@@ -289,213 +210,55 @@ spec:
     app: kafka-producer
 ```
 
-Run this and make sure `minikube tunnel` is running. Inside WSL2:
-
-```bash
-curl localhost:8888/health
-# Should return {"status":"ok"}
-```
-
----
-
-### 2. Set Up socat in WSL2
-
-```bash
-socat TCP-LISTEN:18888,fork,reuseaddr TCP:127.0.0.1:8888
-```
-
-This bridges WSL2 port `18888` → Minikube service on `127.0.0.1:8888`.
-
----
-
-### 3. Set Up Portproxy in PowerShell (on Windows)
-
-First, find your WSL2 IP:
-
-```bash
-wsl hostname -I
-```
-
-Then set up the proxy:
-
-```powershell
-netsh interface portproxy add v4tov4 `
-  listenport=8888 listenaddress=0.0.0.0 `
-  connectport=18888 connectaddress=<WSL2-IP>
-```
-
----
-
-### 4. Open the Firewall
-
-```powershell
-netsh advfirewall firewall add rule name="ExposeAppOn8888" `
-  dir=in action=allow protocol=TCP localport=8888
-```
-
----
-
-## ✅ Test Everything
-
-- On Windows:
-  ```powershell
-  curl http://localhost:18888/health
-  ```
-
-- On LAN machine (Mac):
+- Start the tunnel:  
   ```bash
-  curl http://<windows-ip>:28888/health
+  minikube tunnel
+  ```
+- Test the endpoint:  
+  ```bash
+  curl http://localhost:8888/health
+  # Should return {"status":"ok"}
   ```
 
+### Networking & LAN Access
+
+For detailed instructions on exposing Kubernetes services to your LAN or handling Minikube networking on Windows/WSL2, see:
+
+- [Exposing Kubernetes Services from Minikube to External Machines](docs/network-exposure-minikube.md)
+- [Running Minikube on Windows for Easier LAN Access](docs/minikube-windows-lan-access.md)
+
+These guides cover port forwarding, tunnels, firewall rules, and more.
+
 ---
 
-## 🧹 Cleanup
+## Testing
 
-Remove portproxy:
-
-```powershell
-netsh interface portproxy delete v4tov4 listenport=28888 listenaddress=0.0.0.0
-```
-
-Kill socat in WSL2:
+Run tests with:
 
 ```bash
-pkill -f "socat TCP-LISTEN"
+pytest
+# or
+make test
 ```
 
 ---
 
-## 🧠 Conceptual Diagram
+## Troubleshooting
 
-```text
-(Mac) --> (Windows Host) --> (WSL2) --> (Minikube)
- :28888      :28888           :18888     :8888
-               |                |          |
-          portproxy         socat     Kubernetes
-```
+- Ensure all required services are running (Kafka, Schema Registry, PostgreSQL).
+- Make sure environment variables are set correctly.
+- If using WSL2, ensure port forwarding is properly configured.
+- For Minikube networking issues, see the [Exposing Kubernetes Services from Minikube to External Machines](docs/network-exposure-minikube.md) and/or [Running Minikube on Windows for Easier LAN Access](docs/minikube-windows-lan-access.md)
 
 ---
 
-# 🪟 Running Minikube on Windows for Easier LAN Access
+## Contributing
 
-> **NOTE**: This guide was generated with ChatGPT based on the provided context.
-
-This guide explains how running Minikube using the Docker driver from Windows PowerShell simplifies service exposure to your Windows host and LAN devices—without `socat`, `portproxy`, or WSL networking tricks.
-
----
-
-## 🗺️ Network Chain Overview
-
-| Location          | Port | Purpose                        |
-|-------------------|------|--------------------------------|
-| Minikube cluster  | 8888 | Kubernetes LoadBalancer service |
-| Windows host      | 8888 | Exposed directly via tunnel     |
-| LAN device (Mac)  | 8888 | Can reach it via firewall rule  |
+Contributions are welcome! Please fork the repository and submit a pull request.  
+For major changes, please open an issue first to discuss what you would like to change.
 
 ---
 
-## 🚀 Why This Is Simpler Than WSL2 Setup
+## License
 
-✅ **With Minikube on Windows (Docker driver)**:
-- No WSL2: No virtualized networking layers.
-- `minikube tunnel` runs on Windows, binding services to `localhost` or `0.0.0.0` directly.
-- No need for `socat` or `netsh portproxy`.
-- Only firewall configuration is needed to expose the service to the LAN.
-
-❌ **With Minikube inside WSL2**:
-- `minikube tunnel` runs inside the WSL2 VM.
-- Services only available to WSL2 (`127.0.0.1` inside the VM).
-- Requires bridging with `socat`, port forwarding via `portproxy`, and Windows firewall configuration.
-
----
-
-## 🔧 Setup Guide
-
-### 1. Start Minikube with Docker driver (on PowerShell)
-
-```powershell
-minikube start --driver=docker
-```
-
-This ensures the cluster runs in Docker directly accessible from Windows.
-
----
-
-### 2. Deploy a Service with LoadBalancer Type
-
-Example Kubernetes Service YAML:
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: kafka-producer
-  namespace: uber-service
-spec:
-  type: LoadBalancer
-  ports:
-    - port: 8888
-      targetPort: 8888
-  selector:
-    app: kafka-producer
-```
-
-Apply this with:
-
-```bash
-kubectl apply -f service.yaml
-```
-
----
-
-### 3. Run the Tunnel (on PowerShell)
-
-```powershell
-minikube tunnel
-```
-
-This binds the LoadBalancer service (e.g., kafka-producer) to `localhost:8888` on Windows.
-
----
-
-### 4. Open the Port to LAN (Optional)
-
-If you want to access it from another device on the LAN (e.g., Mac):
-
-```powershell
-netsh advfirewall firewall add rule name="ExposeKafkaProducer8888" `
-  dir=in action=allow protocol=TCP localport=8888
-```
-
-Make sure your router allows LAN access to the Windows machine.
-
----
-
-## ✅ Test Everything
-
-- From **Windows**:
-
-```powershell
-curl http://localhost:8888/health
-```
-
-- From **LAN device (Mac)**:
-
-```bash
-curl http://<windows-ip>:8888/health
-```
-
----
-
-## 🧠 Conceptual Diagram
-
-```text
-(Mac) --> (Windows Host with Minikube) --> (Minikube Cluster)
- :8888             :8888                      :8888
-                    |                          |
-                firewall                 LoadBalancer
-```
-
----
-
-By using the Docker driver and running Minikube natively in PowerShell, you can eliminate WSL-specific network forwarding complexity, making it ideal for service development and LAN integration.
+MIT License. See [LICENSE](LICENSE) for details.

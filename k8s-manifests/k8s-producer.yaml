@@ -5,7 +5,7 @@ metadata:
   name: kafka-producer
   namespace: uber-service
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: kafka-producer
@@ -48,8 +48,8 @@ spec:
               memory: "128Mi"
               cpu: "100m"
             limits:
-              memory: "256Mi"
-              cpu: "250m"
+              memory: "512Mi"
+              cpu: "500m"
           ports:
             - containerPort: 8888
             
@@ -80,17 +80,24 @@ spec:
     kind: Deployment
     name: kafka-producer
   minReplicas: 1
-  maxReplicas: 5
+  maxReplicas: 10
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 90
+          averageUtilization: 60
     - type: Resource
       resource:
         name: memory
         target:
           type: Utilization
-          averageUtilization: 95
+          averageUtilization: 75
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30

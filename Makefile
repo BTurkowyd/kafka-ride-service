@@ -9,6 +9,7 @@ NAMESPACE ?= uber-service
 ENV_FILE ?= .env
 
 .PHONY: build-images create-namespace add-common-env-config-map add-postgres-secrets create-resources deploy-consumers deploy-consumer delete-consumers socat-ports socat-kill clean
+deploy-monitoring delete-monitoring port-forward-grafana port-forward-prometheus
 
 build-images:
 	@echo "Building Docker images for producer and consumer..."
@@ -80,13 +81,25 @@ socat-kill:
 
 
 deploy-monitoring:
-	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts && \
-	helm repo add grafana https://grafana.github.io/helm-charts && \
-	helm repo update && \
-	helm install prometheus prometheus-community/prometheus --namespace monitoring --create-namespace && \
-	helm install grafana grafana/grafana --namespace monitoring --create-namespace
+	@echo "Deploying Prometheus and Grafana (idempotent)..."
+	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
+	helm repo add grafana https://grafana.github.io/helm-charts || true
+	helm repo update
+	helm upgrade --install prometheus prometheus-community/prometheus --namespace monitoring --create-namespace
+	helm upgrade --install grafana grafana/grafana --namespace monitoring --create-namespace
+	@echo "Grafana admin password:"
+	kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
 
-	@pkill -f "socat TCP-LISTEN" || true
+delete-monitoring:
+	@echo "Deleting Prometheus and Grafana..."
+	helm uninstall prometheus -n monitoring || true
+	helm uninstall grafana -n monitoring || true
+
+port-forward-grafana:
+	kubectl port-forward svc/grafana 3000:80 -n monitoring
+
+port-forward-prometheus:
+	kubectl port-forward svc/prometheus-server 9090:80 -n monitoring
 
 clean:
 	@echo "Cleaning up all resources..."

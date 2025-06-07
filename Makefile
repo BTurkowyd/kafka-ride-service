@@ -116,3 +116,11 @@ clean:
 	kubectl delete configmap common-env -n $(NAMESPACE) --ignore-not-found
 	kubectl delete secret postgres-secret -n $(NAMESPACE) --ignore-not-found
 	$(MAKE) delete-consumers
+
+apply-network-policies:
+	@echo "Applying network policies..."
+	kubectl apply -f k8s-manifests/network-policies/
+
+delete-network-policies:
+	@echo "Deleting network policies..."
+	kubectl delete -f k8s-manifests/network-policies/ --ignore-not-found

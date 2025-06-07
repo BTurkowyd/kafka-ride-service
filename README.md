@@ -23,7 +23,7 @@ A repository focused on implementing Apache Kafka combined with Kubernetes and P
     - [PostgreSQL Database](#postgresql-database)
     - [Kafka Topics](#kafka-topics)
   - [Kubernetes \& Networking](#kubernetes--networking)
-    - [🛡️ Network Policies](#️-network-policies)
+    - [🛡️ Network Policies](#️network-policies)
       - [🔐 Policy Overview](#-policy-overview)
     - [Exposing Services](#exposing-services)
       - [Example: Exposing kafka-producer](#example-exposing-kafka-producer)

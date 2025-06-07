@@ -45,7 +45,7 @@ This project simulates an **event-driven ride-hailing platform**, demonstrating 
 
 The goal is to simulate ride events (`ride_requested`, `ride_started`, `location_update`, `ride_completed`) and send them into Kafka, either through a script or via a REST API exposed by a FastAPI Kafka producer.
 
-![kafka-based_event_pipeline.png](assets/kafka-based_event_pipeline.png)
+![kafka-based_event_pipeline.png](assets/kafka-based_event_pipeline_(kubernetes).png)
 
 ---
 

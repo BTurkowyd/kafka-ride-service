@@ -1,6 +1,4 @@
-
 # 🔌 Exposing Kubernetes Services from Minikube to External Machines
-### NOTE: This guide was generated with ChatGPT based on the provided context.
 
 This guide walks you through how to expose a service running in a Minikube cluster inside WSL2 so that it can be accessed from **another machine on your network (e.g., your Mac)**.
 
@@ -65,7 +63,7 @@ Then set up the proxy:
 
 ```powershell
 netsh interface portproxy add v4tov4 `
-  listenport=28888 listenaddress=0.0.0.0 `
+  listenport=8888 listenaddress=0.0.0.0 `
   connectport=18888 connectaddress=<WSL2-IP>
 ```
 
@@ -74,8 +72,8 @@ netsh interface portproxy add v4tov4 `
 ### 4. Open the Firewall
 
 ```powershell
-netsh advfirewall firewall add rule name="ExposeAppOn28888" `
-  dir=in action=allow protocol=TCP localport=28888
+netsh advfirewall firewall add rule name="ExposeAppOn8888" `
+  dir=in action=allow protocol=TCP localport=8888
 ```
 
 ---

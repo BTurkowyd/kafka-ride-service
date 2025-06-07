@@ -1,0 +1,10 @@
+# k8s-manifests/network-policies/deny-all-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: uber-service
+spec:
+  podSelector: {}  # Selects all pods in the namespace
+  policyTypes:
+    - Ingress

@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kafka-ui-to-kafka
+  namespace: uber-service
+spec:
+  podSelector:
+    matchLabels:
+      app: kafka
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: kafka-ui
+      ports:
+        - protocol: TCP
+          port: 9092
+  policyTypes:
+    - Ingress

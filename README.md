@@ -23,6 +23,8 @@ A repository focused on implementing Apache Kafka combined with Kubernetes and P
     - [PostgreSQL Database](#postgresql-database)
     - [Kafka Topics](#kafka-topics)
   - [Kubernetes \& Networking](#kubernetes--networking)
+    - [🛡️ Network Policies](#️-network-policies)
+      - [🔐 Policy Overview](#-policy-overview)
     - [Exposing Services](#exposing-services)
       - [Example: Exposing kafka-producer](#example-exposing-kafka-producer)
     - [Networking \& LAN Access](#networking--lan-access)
@@ -186,6 +188,24 @@ All environment variables are documented here:
 ---
 
 ## Kubernetes & Networking
+
+### 🛡️ Network Policies
+
+To simulate a secure, production-like environment even in local development (e.g., with **Minikube**), this project uses **Kubernetes NetworkPolicies** to restrict inter-pod communication.
+
+#### 🔐 Policy Overview
+
+| Policy                                | Source Pod(s)         | Destination Pod     | Port  | Purpose                              |
+|--------------------------------------|------------------------|----------------------|-------|---------------------------------------|
+| **Deny all ingress**                 | _All_                  | All                  | —     | Default isolation                     |
+| **Allow producer ➝ Kafka**           | `app=kafka-producer`   | `app=kafka`          | 9092  | Send events to Kafka broker           |
+| **Allow producer ➝ PostgreSQL**      | `app=kafka-producer`   | `app=postgres`       | 5432  | Persist metadata in database          |
+| **Allow consumer ➝ Kafka**           | `role=consumer`        | `app=kafka`          | 9092  | Consume events from Kafka             |
+| **Allow consumer ➝ PostgreSQL**      | `role=consumer`        | `app=postgres`       | 5432  | Enrich or store consumed data         |
+| **Allow Kafka ➝ Zookeeper**          | `app=kafka`            | `app=zookeeper`      | 2181  | Internal Kafka coordination           |
+| **Allow schema-registry ➝ Kafka**    | `app=schema-registry`  | `app=kafka`          | 9092  | Schema registration and lookup        |
+| **Allow Kafka ➝ Schema Registry**    | `app=kafka`            | `app=schema-registry`| 8081  | Fetch Avro schemas                    |
+| **Allow Kafka UI ➝ Kafka**           | `app=kafka-ui`         | `app=kafka`          | 9092  | Kafka UI dashboard access             |
 
 ### Exposing Services
 

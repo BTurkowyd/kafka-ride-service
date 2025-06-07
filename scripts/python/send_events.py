@@ -17,8 +17,8 @@ from producer.modules.geolocation import interpolate_route, random_coord_within
 load_dotenv()
 
 PRODUCER_URL = os.getenv("PRODUCER_URL", "http://localhost:8888")
-NUM_RIDES = 20
-MAX_WORKERS = 5  # Adjust to control concurrency
+NUM_RIDES = 1000
+MAX_WORKERS = 30  # Adjust to control concurrency
 
 # Load known users
 drivers = requests.get(f"{PRODUCER_URL}/get-drivers").json().get("driver_ids", [])
@@ -68,7 +68,7 @@ def simulate_ride():
                 "location": loc,
             },
         )
-        time.sleep(0.1)  # Lower delay for stress testing
+        time.sleep(0.3)  # Lower delay for stress testing
 
     # 4. ride_completed
     requests.post(

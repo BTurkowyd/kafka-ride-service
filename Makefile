@@ -8,7 +8,7 @@
 NAMESPACE ?= uber-service
 ENV_FILE ?= .env
 
-.PHONY: build-images create-namespace add-common-env-config-map add-postgres-secrets create-resources deploy-consumers deploy-consumer delete-consumers socat-ports socat-kill clean
+.PHONY: build-images create-namespace add-common-env-config-map add-postgres-secrets create-resources deploy-consumers deploy-consumer delete-consumers socat-ports socat-kill clean deploy-monitoring delete-monitoring port-forward-grafana port-forward-prometheus
 
 build-images:
 	@echo "Building Docker images for producer and consumer..."
@@ -73,10 +73,40 @@ socat-ports:
 	socat TCP-LISTEN:18080,fork,reuseaddr TCP:127.0.0.1:8080 &
 	# Producer
 	socat TCP-LISTEN:18888,fork,reuseaddr TCP:127.0.0.1:8888 &
+	# Prometheus
+	socat TCP-LISTEN:19090,fork,reuseaddr TCP:127.0.1:9090 &
+	# Grafana
+	socat TCP-LISTEN:13000,fork,reuseaddr TCP:127.0.1:3000 &
 
 socat-kill:
 	@echo "Killing all socat processes..."
-	@pkill -f "socat TCP-LISTEN" || true
+	@pkill -f "socat TCP-LISTEN"
+
+
+deploy-monitoring:
+	@echo "Deploying Prometheus and Grafana (idempotent)..."
+	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
+	helm repo add grafana https://grafana.github.io/helm-charts || true
+	helm repo update
+	helm upgrade --install prometheus prometheus-community/prometheus --namespace monitoring --create-namespace
+	kubectl create secret generic grafana-admin-secret \
+	  --from-env-file=.env \
+	  --namespace monitoring \
+	  --dry-run=client -o yaml | kubectl apply -f -
+	helm upgrade --install grafana grafana/grafana --namespace monitoring --create-namespace -f k8s-manifests/monitoring/grafana-values.yaml
+	@echo "Grafana admin password:"
+	@echo "Grafana password: $(shell grep GRAFANA_ADMIN_PASSWORD .env | cut -d '=' -f2)"
+
+delete-monitoring:
+	@echo "Deleting Prometheus and Grafana..."
+	helm uninstall prometheus -n monitoring || true
+	helm uninstall grafana -n monitoring || true
+
+port-forward-grafana:
+	kubectl port-forward svc/grafana 3000:80 -n monitoring
+
+port-forward-prometheus:
+	kubectl port-forward svc/prometheus-server 9090:80 -n monitoring
 
 clean:
 	@echo "Cleaning up all resources..."

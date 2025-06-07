@@ -38,49 +38,61 @@ def simulate_ride():
     route = interpolate_route(pickup, dropoff)
 
     # 1. ride_requested
-    requests.post(
-        f"{PRODUCER_URL}/ride-request",
-        json={
-            "ride_id": ride_id,
-            "pickup": pickup,
-            "dropoff": dropoff,
-            "passenger_id": passenger_id,
-        },
-    )
+    try:
+        requests.post(
+            f"{PRODUCER_URL}/ride-request",
+            json={
+                "ride_id": ride_id,
+                "pickup": pickup,
+                "dropoff": dropoff,
+                "passenger_id": passenger_id,
+            },
+        )
+    except requests.RequestException as e:
+        print(f"Error during ride-request for ride_id {ride_id}: {e}")
 
     # 2. ride_started
-    requests.post(
-        f"{PRODUCER_URL}/ride-started",
-        json={
-            "ride_id": ride_id,
-            "driver_id": driver_id,
-            "location": pickup,
-        },
-    )
-
-    # 3. location updates
-    for loc in route:
+    try:
         requests.post(
-            f"{PRODUCER_URL}/location-update",
+            f"{PRODUCER_URL}/ride-started",
             json={
                 "ride_id": ride_id,
                 "driver_id": driver_id,
-                "location": loc,
+                "location": pickup,
             },
         )
+    except requests.RequestException as e:
+        print(f"Error during ride-started for ride_id {ride_id}: {e}")
+
+    # 3. location updates
+    for loc in route:
+        try:
+            requests.post(
+                f"{PRODUCER_URL}/location-update",
+                json={
+                    "ride_id": ride_id,
+                    "driver_id": driver_id,
+                    "location": loc,
+                },
+            )
+        except requests.RequestException as e:
+            print(f"Error during location-update for ride_id {ride_id}: {e}")
         time.sleep(0.3)  # Lower delay for stress testing
 
     # 4. ride_completed
-    requests.post(
-        f"{PRODUCER_URL}/ride-completed",
-        json={
-            "ride_id": ride_id,
-            "driver_id": driver_id,
-            "location": dropoff,
-            "pickup": pickup,
-            "dropoff": dropoff,
-        },
-    )
+    try:
+        requests.post(
+            f"{PRODUCER_URL}/ride-completed",
+            json={
+                "ride_id": ride_id,
+                "driver_id": driver_id,
+                "location": dropoff,
+                "pickup": pickup,
+                "dropoff": dropoff,
+            },
+        )
+    except requests.RequestException as e:
+        print(f"Error during ride-completed for ride_id {ride_id}: {e}")
 
     return ride_id
 

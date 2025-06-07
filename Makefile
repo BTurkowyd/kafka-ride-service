@@ -89,9 +89,13 @@ deploy-monitoring:
 	helm repo add grafana https://grafana.github.io/helm-charts || true
 	helm repo update
 	helm upgrade --install prometheus prometheus-community/prometheus --namespace monitoring --create-namespace
-	helm upgrade --install grafana grafana/grafana --namespace monitoring --create-namespace
+	kubectl create secret generic grafana-admin-secret \
+	  --from-env-file=.env \
+	  --namespace monitoring \
+	  --dry-run=client -o yaml | kubectl apply -f -
+	helm upgrade --install grafana grafana/grafana --namespace monitoring --create-namespace -f k8s-manifests/monitoring/grafana-values.yaml
 	@echo "Grafana admin password:"
-	kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+	@echo "Grafana password: $(shell grep GRAFANA_ADMIN_PASSWORD .env | cut -d '=' -f2)"
 
 delete-monitoring:
 	@echo "Deleting Prometheus and Grafana..."

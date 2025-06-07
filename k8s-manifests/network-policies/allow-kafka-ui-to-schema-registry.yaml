@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kafka-ui-to-schema-registry
+  namespace: uber-service
+spec:
+  podSelector:
+    matchLabels:
+      app: schema-registry
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: kafka-ui
+      ports:
+        - protocol: TCP
+          port: 8081
+  policyTypes:
+    - Ingress

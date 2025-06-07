@@ -4,6 +4,7 @@ from diagrams.onprem.database import PostgreSQL
 from diagrams.programming.language import Python
 from diagrams.custom import Custom
 from diagrams.k8s.compute import StatefulSet, Deployment
+from diagrams.onprem.monitoring import Prometheus, Grafana
 
 with Diagram("Kafka-based Event Pipeline (Kubernetes)", show=False, direction="LR"):
 
@@ -11,34 +12,39 @@ with Diagram("Kafka-based Event Pipeline (Kubernetes)", show=False, direction="L
 
     with Cluster("Kubernetes Cluster (Minikube)"):
 
-        zookeeper = StatefulSet("Zookeeper (StatefulSet)")
-        schema_registry = Deployment("Schema Registry (Deployment)")
-        kafka_ui = Custom("Kafka UI", "./kafka-ui.png")
-        db = PostgreSQL("PostgreSQL (StatefulSet)")
+        with Cluster("Uber Service (namespace)"):
+            zookeeper = StatefulSet("Zookeeper (StatefulSet)")
+            schema_registry = Deployment("Schema Registry (Deployment)")
+            kafka_ui = Custom("Kafka UI", "./kafka-ui.png")
+            db = PostgreSQL("PostgreSQL (StatefulSet)")
 
-        with Cluster("Kafka Cluster"):
-            kafka_broker = Kafka("Kafka Broker (StatefulSet)")
+            with Cluster("Kafka Cluster"):
+                kafka_broker = Kafka("Kafka Broker (StatefulSet)")
 
-            with Cluster("Topics"):
-                with Cluster("Streaming Topics"):
-                    topic1 = Kafka("ride_requested")
-                    topic2 = Kafka("ride_started")
-                    topic3 = Kafka("ride_completed")
-                    topic4 = Kafka("location_update")
-                with Cluster("Dead Letter Queue"):
-                    topic5 = Kafka("dead_letter_queue")
+                with Cluster("Topics"):
+                    with Cluster("Streaming Topics"):
+                        topic1 = Kafka("ride_requested")
+                        topic2 = Kafka("ride_started")
+                        topic3 = Kafka("ride_completed")
+                        topic4 = Kafka("location_update")
+                    with Cluster("Dead Letter Queue"):
+                        topic5 = Kafka("dead_letter_queue")
 
-        api_producer = Deployment("FastAPI Kafka Producer (Deployment)")
+            api_producer = Deployment("FastAPI Kafka Producer (Deployment)")
 
-        with Cluster("Consumers"):
-            with Cluster("Streaming Consumers"):
-                c1 = Python("ride_requested (Deployment)")
-                c2 = Python("ride_started (Deployment)")
-                c3 = Python("ride_completed (Deployment)")
-                c4 = Python("location_update (Deployment)")
+            with Cluster("Consumers"):
+                with Cluster("Streaming Consumers"):
+                    c1 = Python("ride_requested (Deployment)")
+                    c2 = Python("ride_started (Deployment)")
+                    c3 = Python("ride_completed (Deployment)")
+                    c4 = Python("location_update (Deployment)")
 
-            with Cluster("Dead Letter Queue Consumer"):
-                c5 = Python("dead_letter_queue (Deployment)")
+                with Cluster("Dead Letter Queue Consumer"):
+                    c5 = Python("dead_letter_queue (Deployment)")
+
+        with Cluster("Monitoring (namespace)"):
+            monitoring = Prometheus("Prometheus (Deployment)")
+            grafana = Grafana("Grafana (Deployment)")
 
     # Flow connections
     (
@@ -67,3 +73,5 @@ with Diagram("Kafka-based Event Pipeline (Kubernetes)", show=False, direction="L
         >> Edge(color="green")
         >> db
     )
+
+    monitoring >> grafana

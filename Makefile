@@ -87,6 +87,7 @@ deploy-monitoring:
 	@echo "Deploying Prometheus, Grafana, Kafka Exporter..."
 	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
 	helm repo add grafana https://grafana.github.io/helm-charts || true
+	helm repo add bitnami https://charts.bitnami.com/bitnami || true
 	helm repo update
 
 	# Prometheus
@@ -105,12 +106,12 @@ deploy-monitoring:
 	  -f k8s-manifests/monitoring/grafana-values.yaml
 
 	# Kafka Exporter
-	helm upgrade --install kafka-exporter prometheus-community/kafka-exporter \
-	  --namespace monitoring \
-	  --create-namespace \
-	  --set kafka.server=kafka.uber-service.svc.cluster.local:9092 \
-	  --set serviceMonitor.enabled=true \
-	  --set serviceMonitor.namespace=monitoring
+	helm upgrade --install kafka-exporter bitnami/kafka-exporter \
+	--namespace monitoring \
+	--create-namespace \
+	--set kafka.brokerList={kafka.uber-service.svc.cluster.local:9092} \
+	--set serviceMonitor.enabled=true \
+	--set serviceMonitor.namespace=monitoring
 
 delete-monitoring:
 	@echo "Deleting Prometheus and Grafana..."

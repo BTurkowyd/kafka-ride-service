@@ -119,15 +119,38 @@ spec:
           volumeMounts:
             - name: kafka-data
               mountPath: /bitnami/kafka
-  volumeClaimTemplates:
-    - metadata:
-        name: kafka-data
-      spec:
-        accessModes: [ "ReadWriteOnce" ]
-        resources:
-          requests:
-            storage: 5Gi
+      volumes:
+        - name: kafka-data
+          emptyDir: {}
 
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-topic-init
+  namespace: uber-service
+spec:
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: kafka-init
+          image: bitnami/kafka:3.6.0
+          command:
+            - bash
+            - -c
+            - |
+              echo "Waiting for Zookeeper..." && \
+              while ! nc -z zookeeper-headless.uber-service.svc.cluster.local 2181; do sleep 2; done && \
+              echo "Waiting for Kafka..." && \
+              while ! nc -z kafka.uber-service.svc.cluster.local 9092; do sleep 2; done && \
+              echo "Kafka is up, creating topics..." && \
+              kafka-topics.sh --create --if-not-exists --topic uber.ride_requested --bootstrap-server kafka.uber-service.svc.cluster.local:9092 --partitions 3 --replication-factor 1 && \
+              kafka-topics.sh --create --if-not-exists --topic uber.ride_started --bootstrap-server kafka.uber-service.svc.cluster.local:9092 --partitions 3 --replication-factor 1 && \
+              kafka-topics.sh --create --if-not-exists --topic uber.location_update --bootstrap-server kafka.uber-service.svc.cluster.local:9092 --partitions 3 --replication-factor 1 && \
+              kafka-topics.sh --create --if-not-exists --topic uber.ride_completed --bootstrap-server kafka.uber-service.svc.cluster.local:9092 --partitions 3 --replication-factor 1 && \
+              kafka-topics.sh --create --if-not-exists --topic uber.dlq --bootstrap-server kafka.uber-service.svc.cluster.local:9092 --partitions 1 --replication-factor 1
 ---
 apiVersion: apps/v1
 kind: Deployment

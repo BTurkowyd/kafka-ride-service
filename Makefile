@@ -106,11 +106,14 @@ deploy-monitoring:
 
 	# Kafka Exporter
 	helm upgrade --install kafka-exporter prometheus-community/prometheus-kafka-exporter \
-	--namespace monitoring \
-	--create-namespace \
-	--set kafka.server=kafka.uber-service.svc.cluster.local:9092 \
-	--set serviceMonitor.enabled=true \
-	--set serviceMonitor.namespace=monitoring
+	  --namespace monitoring \
+	  --create-namespace \
+	  --set kafka.server=kafka.uber-service.svc.cluster.local:9092 \
+	  --set serviceMonitor.enabled=true \
+	  --set serviceMonitor.namespace=monitoring \
+	  --set extraArgs="{--kafka.version=2.8.1,--kafka.server=kafka.uber-service.svc.cluster.local:9092}" \
+	  --set logLevel=debug
+
 
 delete-monitoring:
 	@echo "Deleting Prometheus and Grafana..."

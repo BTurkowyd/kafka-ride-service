@@ -84,18 +84,33 @@ socat-kill:
 
 
 deploy-monitoring:
-	@echo "Deploying Prometheus and Grafana (idempotent)..."
+	@echo "Deploying Prometheus, Grafana, Kafka Exporter..."
 	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
 	helm repo add grafana https://grafana.github.io/helm-charts || true
 	helm repo update
-	helm upgrade --install prometheus prometheus-community/prometheus --namespace monitoring --create-namespace
+
+	# Prometheus
+	helm upgrade --install prometheus prometheus-community/prometheus \
+	  --namespace monitoring --create-namespace \
+	  --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=true
+
+	# Grafana with secrets
 	kubectl create secret generic grafana-admin-secret \
 	  --from-env-file=.env \
 	  --namespace monitoring \
 	  --dry-run=client -o yaml | kubectl apply -f -
-	helm upgrade --install grafana grafana/grafana --namespace monitoring --create-namespace -f k8s-manifests/monitoring/grafana-values.yaml
-	@echo "Grafana admin password:"
-	@echo "Grafana password: $(shell grep GRAFANA_ADMIN_PASSWORD .env | cut -d '=' -f2)"
+	helm upgrade --install grafana grafana/grafana \
+	  --namespace monitoring \
+	  --create-namespace \
+	  -f k8s-manifests/monitoring/grafana-values.yaml
+
+	# Kafka Exporter
+	helm upgrade --install kafka-exporter prometheus-community/kafka-exporter \
+	  --namespace monitoring \
+	  --create-namespace \
+	  --set kafka.server=kafka.uber-service.svc.cluster.local:9092 \
+	  --set serviceMonitor.enabled=true \
+	  --set serviceMonitor.namespace=monitoring
 
 delete-monitoring:
 	@echo "Deleting Prometheus and Grafana..."

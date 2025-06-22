@@ -1,4 +1,4 @@
-# k8s-manifests/network-policies/allow-producer-to-kafka.yaml
+# Allows the Kafka producer to connect to Kafka brokers on port 9092.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

@@ -1,3 +1,5 @@
+# Custom values for Grafana Helm chart.
+# Configures admin credentials and Prometheus as the default data source.
 admin:
   existingSecret: grafana-admin-secret
   userKey: admin-user

@@ -1,9 +1,5 @@
-# This is a high-level breakdown of what you need for Kubernetes setup
-# based on your docker-compose file. This does not include Helm charts directly,
-# but notes where to use them. Kubernetes manifests are provided for services not
-# managed by Helm.
 ---
-# PostgreSQL StatefulSet
+# PostgreSQL StatefulSet for persistent database storage.
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -54,7 +50,7 @@ spec:
           storage: 1Gi
 
 ---
-# PostgreSQL Headless Service
+# Headless service for PostgreSQL, used for internal DNS and StatefulSet.
 apiVersion: v1
 kind: Service
 metadata:
@@ -68,7 +64,7 @@ spec:
     app: postgres
 
 ---
-# PostgreSQL NodePort Service
+# PostgreSQL LoadBalancer service for external access (if needed).
 apiVersion: v1
 kind: Service
 metadata:
@@ -82,10 +78,8 @@ spec:
     - port: 5432
       targetPort: 5432
 
-
-
 ---
-# Kafka UI Deployment
+# Kafka UI Deployment for managing and monitoring Kafka topics and messages.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

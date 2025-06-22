@@ -1,1 +1,3 @@
+# Consumer configuration for the ride requested event.
+# Used to deploy a consumer for the 'uber.ride_requested' topic.
 consumerModule: consumer_ride_requested

@@ -1,3 +1,5 @@
+# Helm chart metadata for deploying Kafka consumer services.
+# This chart manages deployments, autoscaling, and configuration for consumer modules.
 apiVersion: v2
 name: kafka-consumer
 description: A Helm chart for deploying Kafka consumer services

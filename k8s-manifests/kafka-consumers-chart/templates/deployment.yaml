@@ -1,3 +1,5 @@
+# Helm template for deploying a Kafka consumer as a Kubernetes Deployment.
+# The consumer module is selected via the consumerModule value (see consumers/*.yaml).
 apiVersion: apps/v1
 kind: Deployment
 metadata:

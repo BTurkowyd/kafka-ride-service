@@ -1,4 +1,5 @@
-# k8s-manifests/network-policies/deny-all-ingress.yaml
+# Default deny-all-ingress policy for the namespace.
+# This policy blocks all incoming traffic to pods unless explicitly allowed by other policies.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

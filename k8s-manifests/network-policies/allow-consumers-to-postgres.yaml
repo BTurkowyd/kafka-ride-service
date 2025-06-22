@@ -1,4 +1,4 @@
-# k8s-manifests/network-policies/allow-consumers-to-db.yaml
+# Allows consumer pods to access the PostgreSQL database on port 5432.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

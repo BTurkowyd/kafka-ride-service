@@ -1,3 +1,10 @@
+"""
+Kafka consumer for processing ride completed events.
+
+This module listens to the 'uber.ride_completed' topic, updates ride records in the database
+when a ride is completed, and sends failed or invalid messages to the Dead Letter Queue (DLQ).
+"""
+
 import json
 import uuid
 import os
@@ -19,7 +26,7 @@ from ..dlq_producer import send_to_dlq
 load_dotenv()
 psycopg2.extras.register_uuid()
 
-# Config
+# Kafka and Schema Registry configuration
 KAFKA_TOPIC = "uber.ride_completed"
 BOOTSTRAP_SERVERS = os.getenv("KAFKA_BROKER", "localhost:9092")
 SCHEMA_REGISTRY_URL = os.getenv("SCHEMA_REGISTRY_URL", "http://localhost:8081")
@@ -27,19 +34,18 @@ MAX_RETRIES = 10
 RETRY_DELAY = 2  # seconds
 
 # Schema Registry
-schema_registry_conf = {'url': SCHEMA_REGISTRY_URL}
+schema_registry_conf = {"url": SCHEMA_REGISTRY_URL}
 schema_registry_client = SchemaRegistryClient(schema_registry_conf)
 avro_deserializer = AvroDeserializer(
-    schema_registry_client=schema_registry_client,
-    from_dict=lambda d, _: d
+    schema_registry_client=schema_registry_client, from_dict=lambda d, _: d
 )
 
-# Kafka Consumer config
+# Kafka Consumer configuration
 consumer_conf = {
-    'bootstrap.servers': BOOTSTRAP_SERVERS,
-    'group.id': 'ride_completed_consumer_group',
-    'auto.offset.reset': 'earliest',
-    'enable.auto.commit': True
+    "bootstrap.servers": BOOTSTRAP_SERVERS,
+    "group.id": "ride_completed_consumer_group",
+    "auto.offset.reset": "earliest",
+    "enable.auto.commit": True,
 }
 
 consumer = Consumer(consumer_conf)
@@ -47,6 +53,12 @@ consumer.subscribe([KAFKA_TOPIC])
 
 
 def update_ride_completed(event):
+    """
+    Updates the ride record in the database when a ride is completed.
+
+    Args:
+        event (dict): The ride completed event data.
+    """
     ride_id = uuid.UUID(event["ride_id"])
     timestamp = datetime.fromisoformat(event["timestamp"])
     dropoff_lat, dropoff_lon = event["location"]
@@ -58,7 +70,8 @@ def update_ride_completed(event):
             if ride_exists(conn, ride_id):
                 with conn:
                     with conn.cursor() as cur:
-                        cur.execute("""
+                        cur.execute(
+                            """
                             UPDATE rides
                             SET
                                 dropoff_time = %s,
@@ -67,15 +80,21 @@ def update_ride_completed(event):
                                 fare = %s,
                                 status = 'completed'
                             WHERE ride_id = %s;
-                        """, (timestamp, dropoff_lat, dropoff_lon, fare, ride_id))
+                        """,
+                            (timestamp, dropoff_lat, dropoff_lon, fare, ride_id),
+                        )
                 print(f"[DB] Ride completed for ride_id {ride_id}")
                 return
             else:
                 if attempt < MAX_RETRIES - 1:
-                    print(f"[Retry] ride_id {ride_id} not found, retrying ({attempt + 1})...")
+                    print(
+                        f"[Retry] ride_id {ride_id} not found, retrying ({attempt + 1})..."
+                    )
                     time.sleep(RETRY_DELAY)
                 else:
-                    raise ValueError(f"ride_id {ride_id} not found after {MAX_RETRIES} retries.")
+                    raise ValueError(
+                        f"ride_id {ride_id} not found after {MAX_RETRIES} retries."
+                    )
         except Exception as e:
             raise e
         finally:
@@ -83,6 +102,9 @@ def update_ride_completed(event):
 
 
 def consume_ride_completed():
+    """
+    Main loop for consuming ride completed events from Kafka and updating the database.
+    """
     print(f"[Consumer] Listening to topic '{KAFKA_TOPIC}'...")
 
     while True:
@@ -95,8 +117,7 @@ def consume_ride_completed():
 
         try:
             event = avro_deserializer(
-                msg.value(),
-                SerializationContext(msg.topic(), MessageField.VALUE)
+                msg.value(), SerializationContext(msg.topic(), MessageField.VALUE)
             )
             if event is None:
                 raise ValueError("Deserialization returned None (schema mismatch?)")
@@ -114,7 +135,7 @@ def consume_ride_completed():
                 partition=msg.partition(),
                 offset=msg.offset(),
                 original_event=original_event,
-                error_msg=str(e)
+                error_msg=str(e),
             )
 
 

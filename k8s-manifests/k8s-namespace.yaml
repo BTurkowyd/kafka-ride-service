@@ -1,5 +1,6 @@
 ---
-# Namespace for the Uber service
+# Namespace for the Uber microservices platform.
+# All resources for this project are deployed into this namespace for isolation.
 apiVersion: v1
 kind: Namespace
 metadata:

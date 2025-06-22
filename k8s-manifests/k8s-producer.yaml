@@ -1,4 +1,5 @@
 ---
+# Kafka Producer Deployment for ingesting ride events into Kafka.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,6 +21,7 @@ spec:
           imagePullPolicy: Never
           command: ["uvicorn", "producer.main:app",  "--host", "0.0.0.0", "--port",  "8888"]
           env:
+            # Kafka and database connection environment variables
             - name: KAFKA_BROKER
               value: kafka.uber-service.svc.cluster.local:9092
             - name: SCHEMA_REGISTRY_URL
@@ -54,6 +56,7 @@ spec:
             - containerPort: 8888
             
 ---
+# Service for exposing the Kafka producer API.
 apiVersion: v1
 kind: Service
 metadata:
@@ -69,6 +72,7 @@ spec:
   type: LoadBalancer
 
 ---
+# HorizontalPodAutoscaler for the Kafka producer deployment.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:

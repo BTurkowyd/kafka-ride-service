@@ -1,3 +1,5 @@
+# Helm template for HorizontalPodAutoscaler for a Kafka consumer deployment.
+# Autoscaling is based on CPU and memory utilization thresholds.
 {{- $name := .Values.consumerModule | replace "_" "-" }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler

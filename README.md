@@ -22,13 +22,17 @@ A repository focused on implementing Apache Kafka combined with Kubernetes and P
     - [Consumer Services](#consumer-services)
     - [PostgreSQL Database](#postgresql-database)
     - [Kafka Topics](#kafka-topics)
+  - [API Endpoints](#api-endpoints)
+  - [Helm Chart for Consumers](#helm-chart-for-consumers)
+  - [Scripts](#scripts)
   - [Kubernetes \& Networking](#kubernetes--networking)
-    - [🛡️ Network Policies](#️network-policies)
+    - [🛡️ Network Policies](#️-network-policies)
       - [🔐 Policy Overview](#-policy-overview)
     - [Exposing Services](#exposing-services)
       - [Example: Exposing kafka-producer](#example-exposing-kafka-producer)
     - [Networking \& LAN Access](#networking--lan-access)
   - [Testing](#testing)
+  - [Known Issues / Limitations](#known-issues--limitations)
   - [Troubleshooting](#troubleshooting)
   - [Contributing](#contributing)
   - [License](#license)
@@ -96,7 +100,7 @@ minikube tunnel
 **6. Simulate events or use the API**
 
 - Use the event generator script in `scripts/`
-- Or, interact with the FastAPI endpoints (see [API Usage](#how-it-works))
+- Or, interact with the FastAPI endpoints (see [API Endpoints](#api-endpoints))
 
 ---
 
@@ -107,6 +111,7 @@ minikube tunnel
 - **Docker** & **Docker Compose** (optional, for local dev)
 - **Minikube** & **kubectl** (for Kubernetes)
 - **curl** (for testing endpoints)
+- **make** (for build/test automation)
 
 ---
 
@@ -187,6 +192,48 @@ All environment variables are documented here:
 
 ---
 
+## API Endpoints
+
+| Endpoint              | Method | Description                       |
+|-----------------------|--------|-----------------------------------|
+| `/health`             | GET    | Health check                      |
+| `/ride-request`       | POST   | Submit a ride request event       |
+| `/ride-started`       | POST   | Mark a ride as started            |
+| `/ride-completed`     | POST   | Mark a ride as completed          |
+| `/location-update`    | POST   | Send a driver location update     |
+| `/get-passengers`     | GET    | List all passenger IDs            |
+| `/get-drivers`        | GET    | List all driver IDs               |
+
+FastAPI also provides interactive docs at `/docs` when running locally.
+
+---
+
+## Helm Chart for Consumers
+
+To deploy Kafka consumers using Helm:
+
+```bash
+cd k8s-manifests/kafka-consumers-chart
+helm install my-consumers .
+```
+
+Customize values in `values.yaml` as needed.
+
+---
+
+## Scripts
+
+- `scripts/event_generator.py`: Simulates ride events and sends them to the producer API.
+- `scripts/sql/create_tables.sql`: Initializes the PostgreSQL schema.
+
+Example usage:
+
+```bash
+python scripts/event_generator.py --num-events 100
+```
+
+---
+
 ## Kubernetes & Networking
 
 ### 🛡️ Network Policies
@@ -253,13 +300,25 @@ These guides cover port forwarding, tunnels, firewall rules, and more.
 
 ## Testing
 
-Run tests with:
+Unit and integration tests are located in the `tests/` directory.
+
+To run all tests:
 
 ```bash
 pytest
 # or
 make test
 ```
+
+---
+
+## Known Issues / Limitations
+
+- The project is designed for local development and demonstration; not production-hardened.
+- Only tested with Minikube and Docker driver.
+- Some scripts and manifests assume a Linux/Unix-like environment.
+- DLQ handling is managed by a dedicated consumer.
+- If you encounter networking issues on Windows/WSL2, see the [Networking & LAN Access](#networking--lan-access) section.
 
 ---
 

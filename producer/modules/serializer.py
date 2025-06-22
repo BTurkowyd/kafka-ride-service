@@ -1,22 +1,40 @@
+"""
+Kafka Avro serializer setup for all ride event topics.
+
+Loads Avro schemas and prepares serializers for each event type.
+"""
+
 import os
 
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroSerializer
 from dotenv import load_dotenv
 
+# Load environment variables from .env file
 load_dotenv()
 
 SCHEMA_REGISTRY_URL = os.getenv("SCHEMA_REGISTRY_URL", "http://localhost:8081")
 
 # Schema Registry Client
-schema_registry_conf = {'url': SCHEMA_REGISTRY_URL}
+schema_registry_conf = {"url": SCHEMA_REGISTRY_URL}
 schema_registry_client = SchemaRegistryClient(schema_registry_conf)
 
-# Load Avro avro_schemas from files
+
 def load_schema(path):
+    """
+    Loads an Avro schema from a file.
+
+    Args:
+        path (str): Path to the Avro schema file.
+
+    Returns:
+        str: Avro schema as a string.
+    """
     with open(path) as f:
         return f.read()
 
+
+# Load Avro schemas for each event type
 ride_requested_schema = load_schema("producer/avro_schemas/ride_requested.avsc")
 ride_started_schema = load_schema("producer/avro_schemas/ride_started.avsc")
 location_update_schema = load_schema("producer/avro_schemas/location_update.avsc")

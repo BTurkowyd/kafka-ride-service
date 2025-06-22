@@ -1,3 +1,11 @@
+"""
+FastAPI application for producing Uber ride events to Kafka.
+
+This service exposes endpoints for simulating ride lifecycle events
+(ride request, ride started, ride completed, location update)
+and publishes them to Kafka topics using Avro serialization.
+"""
+
 import os
 from datetime import datetime, UTC
 
@@ -22,15 +30,17 @@ from producer.modules.base_models import (
     LocationUpdatePayload,
 )
 
+# Load environment variables from .env file
 load_dotenv()
 
+# Initialize FastAPI app
 app = FastAPI()
 
-# Config
+# Kafka configuration
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
 TOPIC_NAME = "uber.ride_requested"
 
-# Common producer config
+# Common Kafka producer configuration
 producer_config = {
     "bootstrap.servers": KAFKA_BROKER,
     "key.serializer": StringSerializer("utf_8"),
@@ -39,12 +49,24 @@ producer_config = {
 
 @app.get("/health")
 def health_check():
+    """
+    Health check endpoint for readiness/liveness probes.
+    """
     return {"status": "ok"}
 
 
 @app.post("/ride-request")
 def ride_request(data: RideRequestPayload):
-    # Convert to dictionary and inject event_type + timestamp
+    """
+    Publishes a ride requested event to Kafka.
+
+    Args:
+        data (RideRequestPayload): Ride request details.
+
+    Returns:
+        dict: Status and event data.
+    """
+    # Prepare event payload
     event = {
         "event_type": "ride_requested",
         "ride_id": str(data.ride_id),
@@ -55,10 +77,10 @@ def ride_request(data: RideRequestPayload):
     }
 
     try:
+        # Create a Kafka producer with Avro serializer
         producer = SerializingProducer(
             {**producer_config, "value.serializer": ride_requested_serializer}
         )
-
         producer.produce(topic=TOPIC_NAME, value=event)
         producer.flush()
         return {"status": "published", "event": event}
@@ -69,6 +91,15 @@ def ride_request(data: RideRequestPayload):
 
 @app.post("/ride-started")
 def ride_started(data: RideStartedPayload):
+    """
+    Publishes a ride started event to Kafka.
+
+    Args:
+        data (RideStartedPayload): Ride started details.
+
+    Returns:
+        dict: Status and event data.
+    """
     event = {
         "event_type": "ride_started",
         "ride_id": str(data.ride_id),
@@ -81,7 +112,6 @@ def ride_started(data: RideStartedPayload):
         producer = SerializingProducer(
             {**producer_config, "value.serializer": ride_started_serializer}
         )
-
         producer.produce(topic="uber.ride_started", value=event)
         producer.flush()
         return {"status": "published", "event": event}
@@ -92,6 +122,16 @@ def ride_started(data: RideStartedPayload):
 
 @app.post("/ride-completed")
 def ride_completed(data: RideCompletedPayload):
+    """
+    Publishes a ride completed event to Kafka.
+
+    Args:
+        data (RideCompletedPayload): Ride completed details.
+
+    Returns:
+        dict: Status and event data.
+    """
+    # Calculate fare based on distance
     fare = round(haversine_distance(data.pickup, data.dropoff) * 2.4, 2)
 
     event = {
@@ -107,7 +147,6 @@ def ride_completed(data: RideCompletedPayload):
         producer = SerializingProducer(
             {**producer_config, "value.serializer": ride_completed_serializer}
         )
-
         producer.produce(topic="uber.ride_completed", value=event)
         producer.flush()
         return {"status": "published", "event": event}
@@ -118,6 +157,15 @@ def ride_completed(data: RideCompletedPayload):
 
 @app.post("/location-update")
 def location_update(data: LocationUpdatePayload):
+    """
+    Publishes a location update event to Kafka.
+
+    Args:
+        data (LocationUpdatePayload): Location update details.
+
+    Returns:
+        dict: Status and event data.
+    """
     event = {
         "event_type": "location_update",
         "ride_id": str(data.ride_id),
@@ -130,7 +178,6 @@ def location_update(data: LocationUpdatePayload):
         producer = SerializingProducer(
             {**producer_config, "value.serializer": location_update_serializer}
         )
-
         producer.produce(topic="uber.location_update", value=event)
         producer.flush()
         return {"status": "published", "event": event}
@@ -141,7 +188,12 @@ def location_update(data: LocationUpdatePayload):
 
 @app.get("/get-passengers")
 def get_passenger():
-    """Fetch a random passenger from the database."""
+    """
+    Fetches all passenger IDs from the database.
+
+    Returns:
+        dict: List of passenger IDs.
+    """
     try:
         conn = psycopg2.connect(**DB_CONFIG)
         cursor = conn.cursor()
@@ -160,7 +212,12 @@ def get_passenger():
 
 @app.get("/get-drivers")
 def get_driver():
-    """Fetch a random driver from the database."""
+    """
+    Fetches all driver IDs from the database.
+
+    Returns:
+        dict: List of driver IDs.
+    """
     try:
         conn = psycopg2.connect(**DB_CONFIG)
         cursor = conn.cursor()

@@ -1,3 +1,10 @@
+"""
+Kafka consumer for processing Dead Letter Queue (DLQ) events.
+
+This module listens to the 'uber.dead_letter' topic and stores failed or invalid events
+in the 'dead_letter_events' table in the database for further inspection.
+"""
+
 import os
 import json
 from datetime import datetime
@@ -12,36 +19,42 @@ from confluent_kafka.serialization import SerializationContext, MessageField
 
 from ..helpers import get_db_connection
 
-# Load env vars
+# Load environment variables
 load_dotenv()
 psycopg2.extras.register_uuid()
 
-# Kafka & Registry config
+# Kafka and Schema Registry configuration
 KAFKA_TOPIC = "uber.dead_letter"
 BOOTSTRAP_SERVERS = os.getenv("KAFKA_BROKER", "localhost:9092")
 SCHEMA_REGISTRY_URL = os.getenv("SCHEMA_REGISTRY_URL", "http://localhost:8081")
 
 
 # Schema Registry
-schema_registry_conf = {'url': SCHEMA_REGISTRY_URL}
+schema_registry_conf = {"url": SCHEMA_REGISTRY_URL}
 schema_registry_client = SchemaRegistryClient(schema_registry_conf)
 avro_deserializer = AvroDeserializer(
-    schema_registry_client=schema_registry_client,
-    from_dict=lambda d, _: d
+    schema_registry_client=schema_registry_client, from_dict=lambda d, _: d
 )
 
-# Kafka Consumer config
+# Kafka Consumer configuration
 consumer_conf = {
-    'bootstrap.servers': BOOTSTRAP_SERVERS,
-    'group.id': 'dlq_consumer_group',
-    'auto.offset.reset': 'earliest',
-    'enable.auto.commit': True
+    "bootstrap.servers": BOOTSTRAP_SERVERS,
+    "group.id": "dlq_consumer_group",
+    "auto.offset.reset": "earliest",
+    "enable.auto.commit": True,
 }
 
 consumer = Consumer(consumer_conf)
 consumer.subscribe([KAFKA_TOPIC])
 
+
 def insert_dead_letter(event):
+    """
+    Inserts a DLQ event into the dead_letter_events table.
+
+    Args:
+        event (dict): The DLQ event data.
+    """
     try:
         topic = event["topic"]
         partition = event["partition"]
@@ -57,20 +70,31 @@ def insert_dead_letter(event):
         conn = get_db_connection()
         with conn:
             with conn.cursor() as cur:
-                cur.execute("""
+                cur.execute(
+                    """
                     INSERT INTO dead_letter_events (
                         topic, partition, "offset", event_time,
                         original_event, error_message
                     ) VALUES (%s, %s, %s, %s, %s, %s)
-                """, (
-                    topic, partition, offset, event_time,
-                    json.dumps(original_event), error_message
-                ))
+                """,
+                    (
+                        topic,
+                        partition,
+                        offset,
+                        event_time,
+                        json.dumps(original_event),
+                        error_message,
+                    ),
+                )
         print(f"[DB] Inserted DLQ record from topic '{topic}' @ offset {offset}")
     except Exception as e:
         print(f"[ERROR] Failed to insert DLQ record: {e}")
 
+
 def consume_dlq():
+    """
+    Main loop for consuming DLQ events from Kafka and storing them in the database.
+    """
     print(f"[Consumer] Listening to DLQ topic '{KAFKA_TOPIC}'...")
 
     while True:
@@ -83,8 +107,7 @@ def consume_dlq():
 
         try:
             event = avro_deserializer(
-                msg.value(),
-                SerializationContext(msg.topic(), MessageField.VALUE)
+                msg.value(), SerializationContext(msg.topic(), MessageField.VALUE)
             )
             if event:
                 print(f"[Kafka] DLQ Event received: {event['error_message']}")
@@ -93,6 +116,7 @@ def consume_dlq():
                 print(f"[WARN] DLQ event could not be deserialized: None returned")
         except Exception as e:
             print(f"[ERROR] Failed to process DLQ message: {e}")
+
 
 if __name__ == "__main__":
     consume_dlq()

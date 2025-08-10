@@ -1,0 +1,24 @@
+name: Trivy Security Scan
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+jobs:
+  trivy-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy FS scan (high/critical only, fail on findings)
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/repo aquasec/trivy fs --severity CRITICAL --exit-code 1 /repo
+
+      - name: Run Trivy config scan (high/critical only, fail on findings)
+        run: |
+          # Scan Kubernetes manifests and Helm charts for security issues
+          docker run --rm -v ${{ github.workspace }}:/repo aquasec/trivy k8s --severity CRITICAL --exit-code 1 /repo/k8s-manifests
+          docker run --rm -v ${{ github.workspace }}:/repo aquasec/trivy k8s --severity CRITICAL --exit-code 1 /repo/k8s-manifests/kafka-consumers-chart

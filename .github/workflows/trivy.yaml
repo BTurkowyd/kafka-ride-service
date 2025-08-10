@@ -20,4 +20,4 @@ jobs:
       - name: Run Trivy config scan (high/critical only, fail on findings)
         run: |
           # Scan Kubernetes manifests and Helm charts for security issues
-          docker run --rm -v ${{ github.workspace }}:/repo aquasec/trivy k8s --severity CRITICAL --exit-code 1 /repo/k8s-manifests
+          docker run --rm -v ${{ github.workspace }}:/repo aquasec/trivy config --severity CRITICAL --exit-code 1 /repo/k8s-manifests
